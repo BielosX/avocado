@@ -8,5 +8,8 @@ build: toolchain
 sections:
     objdump -h target/thumbv7em-none-eabihf/release/avocado
 
+vector-table:
+    objdump -s -j .vector_table target/thumbv7em-none-eabihf/release/avocado
+
 clean:
     cargo clean

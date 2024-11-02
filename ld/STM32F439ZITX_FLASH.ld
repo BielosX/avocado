@@ -16,6 +16,9 @@ SECTIONS
   {
     LONG(_initial_stack_pointer_value);
     KEEP(*(.vector_table.reset));
+    FILL(0)
+    . += 216;
+    KEEP(*(.vector_table.exti15_10));
   } >FLASH
 
   .text :
