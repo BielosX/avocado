@@ -11,5 +11,8 @@ sections:
 vector-table:
     objdump -s -j .vector_table target/thumbv7em-none-eabihf/release/avocado
 
+flash: clean build
+    $STM32_PROGRAMMER_CLI -c port=SWD -d target/thumbv7em-none-eabihf/release/avocado.elf -rst
+
 clean:
     cargo clean
