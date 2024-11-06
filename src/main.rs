@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use core::arch::asm;
 use core::panic::PanicInfo;
 use core::ptr::{read_volatile, write_volatile};
 
@@ -48,26 +49,31 @@ unsafe fn reset() -> ! {
     loop {}
 }
 
+#[inline(always)]
+unsafe fn store_barrier() {
+    asm!("DSB ST");
+}
+
 unsafe fn button_handler() {
-    // Cannot be the last instruction
-    write_volatile((EXTI_BASE + 0x14) as *mut u32, 0b1 << 13);
     let pin_value = read_volatile((PORT_B + 0x14) as *mut u32) & 0b1;
     if pin_value != 0 {
         write_volatile((PORT_B + 0x18) as *mut u32, 0b1 << 16);
     } else {
         write_volatile((PORT_B + 0x18) as *mut u32, 0b1);
     }
+    write_volatile((EXTI_BASE + 0x14) as *mut u32, 0b1 << 13);
+    store_barrier();
 }
 
 unsafe fn led_blink() {
-    // Cannot be the last instruction
-    write_volatile((TIM7_BASE + 0x10) as *mut u32, 0b0);
     let pin_value = read_volatile((PORT_B + 0x14) as *mut u32) & (0b1 << 14);
     if pin_value != 0 {
         write_volatile((PORT_B + 0x18) as *mut u32, 0b1 << 30);
     } else {
         write_volatile((PORT_B + 0x18) as *mut u32, 0b1 << 14);
     }
+    write_volatile((TIM7_BASE + 0x10) as *mut u32, 0b0);
+    store_barrier();
 }
 
 #[no_mangle]
