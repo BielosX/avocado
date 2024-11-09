@@ -2,10 +2,10 @@
 #![no_main]
 
 mod gpio;
-mod stm32f439zltx;
+mod stm32f439zitx;
 
 use crate::gpio::PinMode::Output;
-use crate::stm32f439zltx::PORT_B;
+use crate::stm32f439zitx::PORT_B;
 use core::arch::asm;
 use core::panic::PanicInfo;
 use core::ptr::write_volatile;
