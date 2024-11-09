@@ -54,7 +54,7 @@ unsafe fn store_barrier() {
 }
 
 unsafe fn button_handler() {
-    PORT_B.switch_pin_output(14);
+    PORT_B.switch_pin_output(0);
     write_volatile((EXTI_BASE + 0x14) as *mut u32, 0b1 << 13);
     store_barrier();
 }

@@ -48,12 +48,12 @@ impl GpioConf {
 
     pub fn switch_pin_output(&self, pin: u32) {
         unsafe {
-            let pin_value = read_volatile(self.address().add(5)) & (0b1 << 14);
+            let pin_value = read_volatile(self.address().add(5)) & (0b1 << pin);
             let set_reset_address = self.address().add(6);
             if pin_value != 0 {
-                write_volatile(set_reset_address, 0b1 << pin);
-            } else {
                 write_volatile(set_reset_address, 0b1 << (pin + 16));
+            } else {
+                write_volatile(set_reset_address, 0b1 << pin);
             }
         }
     }
