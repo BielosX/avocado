@@ -1,11 +1,15 @@
 #![no_std]
 #![no_main]
 
+mod gpio;
+mod stm32f439zltx;
+
+use crate::gpio::PinMode::Output;
+use crate::stm32f439zltx::PORT_B;
 use core::arch::asm;
 use core::panic::PanicInfo;
-use core::ptr::{read_volatile, write_volatile};
+use core::ptr::write_volatile;
 
-const PORT_B: u32 = 0x40020400;
 const TIM7_BASE: u32 = 0x40001400;
 const NVIC_BASE: u32 = 0xE000E100;
 const EXTI_BASE: u32 = 0x40013C00;
@@ -21,13 +25,8 @@ unsafe fn reset() -> ! {
     write_volatile((rcc_base + 0x30) as *mut u32, rcc_value);
     write_volatile((rcc_base + 0x44) as *mut u32, 0b1 << 14);
     write_volatile((rcc_base + 0x40) as *mut u32, 0b1 << 5); //TIM7 clock enable
-    let mut port_mode = 0x00000280 & !(0b11 << 14) & !0b11 & !(0b11 << 28);
-    port_mode |= 0b01 << 14;
-    port_mode |= 0b01;
-    port_mode |= 0b01 << 28;
-    write_volatile(PORT_B as *mut u32, port_mode);
-    let port_output: u32 = 0b1 << 7;
-    write_volatile((PORT_B + 0x14) as *mut u32, port_output);
+    PORT_B.set_pins_mode(Output, &[0, 7, 14]);
+    PORT_B.set_pin(7);
 
     // Enable interrupts index 40 and 55
     write_volatile((NVIC_BASE + 0x4) as *mut u32, (0b1 << 8) | (0b1 << 23));
@@ -55,23 +54,13 @@ unsafe fn store_barrier() {
 }
 
 unsafe fn button_handler() {
-    let pin_value = read_volatile((PORT_B + 0x14) as *mut u32) & 0b1;
-    if pin_value != 0 {
-        write_volatile((PORT_B + 0x18) as *mut u32, 0b1 << 16);
-    } else {
-        write_volatile((PORT_B + 0x18) as *mut u32, 0b1);
-    }
+    PORT_B.switch_pin_output(14);
     write_volatile((EXTI_BASE + 0x14) as *mut u32, 0b1 << 13);
     store_barrier();
 }
 
 unsafe fn led_blink() {
-    let pin_value = read_volatile((PORT_B + 0x14) as *mut u32) & (0b1 << 14);
-    if pin_value != 0 {
-        write_volatile((PORT_B + 0x18) as *mut u32, 0b1 << 30);
-    } else {
-        write_volatile((PORT_B + 0x18) as *mut u32, 0b1 << 14);
-    }
+    PORT_B.switch_pin_output(14);
     write_volatile((TIM7_BASE + 0x10) as *mut u32, 0b0);
     store_barrier();
 }
