@@ -4,12 +4,15 @@
 mod gpio;
 mod stm32f439zitx;
 mod nvic;
+mod rcc;
 
 use crate::gpio::PinMode::Output;
-use crate::stm32f439zitx::{Interrupt, NVIC, PORT_B};
+use crate::stm32f439zitx::{Interrupt, NVIC, PORT_B, RCC};
 use core::arch::asm;
 use core::panic::PanicInfo;
 use core::ptr::write_volatile;
+use crate::rcc::BasicTimer::TIM7;
+use crate::rcc::GpioPort::{B, C};
 
 const TIM7_BASE: u32 = 0x40001400;
 const EXTI_BASE: u32 = 0x40013C00;
@@ -19,12 +22,10 @@ unsafe fn reset() -> ! {
     // Green LED PB0
     // Red LED PB14
     // User button PC13
-    let rcc_base: u32 = 0x40023800;
     // Enable PB and PC
-    let rcc_value: u32 = 0x00100000 | (0b1 << 1) | (0b1 << 2);
-    write_volatile((rcc_base + 0x30) as *mut u32, rcc_value);
-    write_volatile((rcc_base + 0x44) as *mut u32, 0b1 << 14);
-    write_volatile((rcc_base + 0x40) as *mut u32, 0b1 << 5); //TIM7 clock enable
+    RCC.enable_gpio_ports(&[B, C]);
+    RCC.enable_system_configuration_controller();
+    RCC.enable_basic_timer(TIM7);
     PORT_B.set_pins_mode(Output, &[0, 7, 14]);
     PORT_B.set_pin(7);
 

@@ -7,7 +7,6 @@ pub struct GpioConf {
 #[repr(u32)]
 #[derive(Clone, Copy)]
 pub enum PinMode {
-    Input = 0b00,
     Output = 0b01,
 }
 
