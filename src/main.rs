@@ -3,15 +3,15 @@
 
 mod gpio;
 mod stm32f439zitx;
+mod nvic;
 
 use crate::gpio::PinMode::Output;
-use crate::stm32f439zitx::PORT_B;
+use crate::stm32f439zitx::{Interrupt, NVIC, PORT_B};
 use core::arch::asm;
 use core::panic::PanicInfo;
 use core::ptr::write_volatile;
 
 const TIM7_BASE: u32 = 0x40001400;
-const NVIC_BASE: u32 = 0xE000E100;
 const EXTI_BASE: u32 = 0x40013C00;
 
 unsafe fn reset() -> ! {
@@ -29,7 +29,7 @@ unsafe fn reset() -> ! {
     PORT_B.set_pin(7);
 
     // Enable interrupts index 40 and 55
-    write_volatile((NVIC_BASE + 0x4) as *mut u32, (0b1 << 8) | (0b1 << 23));
+    NVIC.enable_interrupts(&[Interrupt::Exti15_10.into(), Interrupt::Tim7.into()]);
 
     let syscfg_base: u32 = 0x40013800;
     let syscfg_offset: u32 = 0x14;
