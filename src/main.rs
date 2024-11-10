@@ -7,16 +7,15 @@ mod nvic;
 mod rcc;
 mod timer;
 mod memory;
+mod exti;
+mod syscfg;
 
-use crate::gpio::PinMode::Output;
-use crate::memory::store_barrier;
+use crate::gpio::PinMode::{Input, Output};
 use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C};
-use crate::stm32f439zitx::{Interrupt, NVIC, PORT_B, RCC, TIM7};
+use crate::stm32f439zitx::{Interrupt, EXTI, NVIC, PORT_B, PORT_C, RCC, SYSCFG, TIM7};
+use crate::syscfg::ExternalInterruptSourcePort;
 use core::panic::PanicInfo;
-use core::ptr::write_volatile;
-
-const EXTI_BASE: u32 = 0x40013C00;
 
 unsafe fn reset() -> ! {
     // Blue LED PB7
@@ -28,17 +27,16 @@ unsafe fn reset() -> ! {
     RCC.enable_system_configuration_controller();
     RCC.enable_basic_timer(BasicTimer::TIM7);
     PORT_B.set_pins_mode(Output, &[0, 7, 14]);
+    PORT_C.set_pin_mode(Input, 13);
     PORT_B.set_pin(7);
 
     // Enable interrupts index 40 and 55
     NVIC.enable_interrupts(&[Interrupt::Exti15_10.into(), Interrupt::Tim7.into()]);
 
-    let syscfg_base: u32 = 0x40013800;
-    let syscfg_offset: u32 = 0x14;
-    write_volatile((syscfg_base + syscfg_offset) as *mut u32, 0b0010 << 4);
+    SYSCFG.set_external_interrupt_source_port(13, ExternalInterruptSourcePort::PortC);
 
-    write_volatile(EXTI_BASE as *mut u32, 0b1 << 13);
-    write_volatile((EXTI_BASE + 0x08) as *mut u32, 0b1 << 13);
+    EXTI.unmask_interrupt(13);
+    EXTI.enable_rising_trigger(13);
 
     // TIM7 handler index 55
     TIM7.update_interrupt_enable();
@@ -51,8 +49,7 @@ unsafe fn reset() -> ! {
 
 unsafe fn button_handler() {
     PORT_B.switch_pin_output(0);
-    write_volatile((EXTI_BASE + 0x14) as *mut u32, 0b1 << 13);
-    store_barrier();
+    EXTI.clear_pending(13);
 }
 
 unsafe fn led_blink() {

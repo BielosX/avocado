@@ -7,6 +7,7 @@ pub struct GpioConf {
 #[repr(u32)]
 #[derive(Clone, Copy)]
 pub enum PinMode {
+    Input = 0b00,
     Output = 0b01,
 }
 
@@ -37,6 +38,10 @@ impl GpioConf {
             current_value |= mode_value;
             write_volatile(self.address(), current_value);
         }
+    }
+
+    pub fn set_pin_mode(&self, mode: PinMode, pin: u32) {
+        self.set_pins_mode(mode, &[pin]);
     }
 
     pub fn set_pin(&self, pin: u32) {
