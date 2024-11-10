@@ -1,10 +1,12 @@
 use crate::gpio::GpioConf;
 use crate::nvic::NvicConf;
 use crate::rcc::RccConf;
+use crate::timer::BasicTimerConf;
 
 pub static PORT_B: GpioConf = GpioConf::new(0x40020400);
 pub static NVIC: NvicConf = NvicConf::new(0xE000E100);
 pub static RCC: RccConf = RccConf::new(0x40023800);
+pub static TIM7: BasicTimerConf = BasicTimerConf::new(0x40001400);
 
 #[repr(u32)]
 pub enum Interrupt {

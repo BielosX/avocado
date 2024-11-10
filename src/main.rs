@@ -5,16 +5,17 @@ mod gpio;
 mod stm32f439zitx;
 mod nvic;
 mod rcc;
+mod timer;
+mod memory;
 
 use crate::gpio::PinMode::Output;
-use crate::stm32f439zitx::{Interrupt, NVIC, PORT_B, RCC};
-use core::arch::asm;
+use crate::memory::store_barrier;
+use crate::rcc::BasicTimer;
+use crate::rcc::GpioPort::{B, C};
+use crate::stm32f439zitx::{Interrupt, NVIC, PORT_B, RCC, TIM7};
 use core::panic::PanicInfo;
 use core::ptr::write_volatile;
-use crate::rcc::BasicTimer::TIM7;
-use crate::rcc::GpioPort::{B, C};
 
-const TIM7_BASE: u32 = 0x40001400;
 const EXTI_BASE: u32 = 0x40013C00;
 
 unsafe fn reset() -> ! {
@@ -25,7 +26,7 @@ unsafe fn reset() -> ! {
     // Enable PB and PC
     RCC.enable_gpio_ports(&[B, C]);
     RCC.enable_system_configuration_controller();
-    RCC.enable_basic_timer(TIM7);
+    RCC.enable_basic_timer(BasicTimer::TIM7);
     PORT_B.set_pins_mode(Output, &[0, 7, 14]);
     PORT_B.set_pin(7);
 
@@ -40,18 +41,12 @@ unsafe fn reset() -> ! {
     write_volatile((EXTI_BASE + 0x08) as *mut u32, 0b1 << 13);
 
     // TIM7 handler index 55
-    write_volatile((TIM7_BASE + 0x10) as *mut u32, 0b0);
-    write_volatile((TIM7_BASE + 0x0C) as *mut u32, 0b1);
-    write_volatile((TIM7_BASE + 0x28) as *mut u32, 0xFFFF);
-    write_volatile((TIM7_BASE + 0x2C) as *mut u32, 0x00FF);
-    write_volatile(TIM7_BASE as *mut u32, (0b1 << 7) | 0b1 | (0b1 << 2));
+    TIM7.update_interrupt_enable();
+    TIM7.set_prescaler(0xFFFF);
+    TIM7.set_auto_reload(0x00FF);
+    TIM7.enable_timer();
 
     loop {}
-}
-
-#[inline(always)]
-unsafe fn store_barrier() {
-    asm!("DSB ST");
 }
 
 unsafe fn button_handler() {
@@ -62,8 +57,7 @@ unsafe fn button_handler() {
 
 unsafe fn led_blink() {
     PORT_B.switch_pin_output(14);
-    write_volatile((TIM7_BASE + 0x10) as *mut u32, 0b0);
-    store_barrier();
+    TIM7.clear_status_flag();
 }
 
 #[no_mangle]
