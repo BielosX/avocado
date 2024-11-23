@@ -1,7 +1,7 @@
 use core::ptr::{read_volatile, write_volatile};
 
 pub struct GpioConf {
-    base: u32
+    base: u32,
 }
 
 #[repr(u32)]
@@ -9,13 +9,18 @@ pub struct GpioConf {
 pub enum PinMode {
     Input = 0b00,
     Output = 0b01,
+    Alternate = 0b10,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy)]
+pub enum AlternateFunction {
+    Usart1_3 = 0b0111,
 }
 
 impl GpioConf {
     pub const fn new(base: u32) -> GpioConf {
-        GpioConf {
-            base
-        }
+        GpioConf { base }
     }
 
     #[inline(always)]
@@ -59,6 +64,18 @@ impl GpioConf {
             } else {
                 write_volatile(set_reset_address, 0b1 << pin);
             }
+        }
+    }
+
+    pub fn set_alternate_function(&self, pin: u32, function: AlternateFunction) {
+        let shift: u32 = (pin % 8) << 2;
+        let offset: usize = (pin / 8) as usize;
+        unsafe {
+            let address = self.address().add(8 + offset);
+            let mut current_value = read_volatile(address);
+            current_value &= !(0b1111 << shift);
+            current_value |= (function as u32) << shift;
+            write_volatile(address, current_value);
         }
     }
 }

@@ -1,7 +1,7 @@
 use core::ptr::{read_volatile, write_volatile};
 
 pub struct SysConf {
-    base: u32
+    base: u32,
 }
 
 #[repr(u32)]
@@ -24,7 +24,11 @@ impl SysConf {
         self.base as *mut u32
     }
 
-    pub fn set_external_interrupt_source_port(&self, exti_number: u32, port: ExternalInterruptSourcePort) {
+    pub fn set_external_interrupt_source_port(
+        &self,
+        exti_number: u32,
+        port: ExternalInterruptSourcePort,
+    ) {
         unsafe {
             let base: *mut u32 = self.address().add(2);
             let register_number = (exti_number >> 2) as usize;

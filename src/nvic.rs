@@ -1,7 +1,7 @@
 use core::ptr::{read_volatile, write_volatile};
 
 pub struct NvicConf {
-    set_enable_base: u32
+    set_enable_base: u32,
 }
 
 impl NvicConf {
@@ -26,6 +26,8 @@ impl NvicConf {
     }
 
     pub fn enable_interrupts(&self, indices: &[u32]) {
-        indices.iter().for_each(|&interrupt| self.enable_interrupt(interrupt));
+        indices
+            .iter()
+            .for_each(|&interrupt| self.enable_interrupt(interrupt));
     }
 }

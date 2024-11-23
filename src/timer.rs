@@ -1,8 +1,8 @@
-use core::ptr::{read_volatile, write_volatile};
 use crate::memory::store_barrier;
+use core::ptr::{read_volatile, write_volatile};
 
 pub struct BasicTimerConf {
-    base: u32
+    base: u32,
 }
 
 impl BasicTimerConf {

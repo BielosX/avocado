@@ -16,5 +16,8 @@ vector-table:
 flash: clean build
     $STM32_PROGRAMMER_CLI -c port=SWD -d target/{{arch}}/release/avocado.elf -rst
 
+fmt:
+    cargo fmt
+
 clean:
     cargo clean
