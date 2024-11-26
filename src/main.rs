@@ -105,6 +105,7 @@ unsafe fn led_blink() {
 
 unsafe fn feed_watchdog() {
     IWDG.feed_watchdog();
+    TIM6.clear_status_flag();
 }
 
 #[no_mangle]
