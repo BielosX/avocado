@@ -40,6 +40,7 @@ unsafe fn reset() -> ! {
     RCC.enable_gpio_ports(&[B, C, D]);
     RCC.enable_system_configuration_controller();
     RCC.enable_basic_timer(BasicTimer::TIM7);
+    RCC.enable_basic_timer(BasicTimer::TIM6);
     RCC.enable_usart(3);
     PORT_B.set_pins_mode(Output, &[0, 7, 14]);
     PORT_C.set_pin_mode(Input, 13);
@@ -78,13 +79,13 @@ unsafe fn reset() -> ! {
     TIM7.set_auto_reload(0x00FF);
     TIM7.enable_timer();
 
-    IWDG.start_watchdog();
-
     // TIM6 handler index 54
     TIM6.update_interrupt_enable();
-    TIM6.set_prescaler(0xFFFF);
-    TIM6.set_auto_reload(0x13EC);
+    TIM6.set_prescaler(0);
+    TIM6.set_auto_reload(0x00FF);
     TIM6.enable_timer();
+
+    IWDG.start_watchdog();
 
 
     let hello = "Hello World\r\n";

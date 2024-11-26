@@ -12,6 +12,7 @@ pub enum GpioPort {
 }
 
 pub enum BasicTimer {
+    TIM6 = 0b1 << 4,
     TIM7 = 0b1 << 5,
 }
 
