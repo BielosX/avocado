@@ -1,3 +1,4 @@
+use crate::asm::no_operation;
 use core::ptr::{read_volatile, write_volatile};
 
 #[repr(u32)]
@@ -104,6 +105,29 @@ impl UsartConf {
     pub fn set_data(&self, data: u8) {
         unsafe {
             write_volatile(self.address().add(1), data as u32);
+        }
+    }
+}
+
+pub struct UsartSingleByteDriver<'a> {
+    control: &'a UsartConf,
+}
+
+impl<'a> UsartSingleByteDriver<'a> {
+    pub const fn new(control: &'a UsartConf) -> UsartSingleByteDriver<'a> {
+        UsartSingleByteDriver { control }
+    }
+
+    pub fn send_bytes(&self, bytes: &[u8]) {
+        unsafe {
+            for character in bytes.iter() {
+                self.control.set_data(character.clone());
+                while !self.control.is_transmit_data_register_empty()
+                    || !self.control.is_transmission_completed()
+                {
+                    no_operation();
+                }
+            }
         }
     }
 }

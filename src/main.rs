@@ -19,6 +19,7 @@ use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
 use crate::stm32f439zitx::{
     Interrupt, EXTI, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM7, USART3,
+    USART3_SINGLE_BYTE_DRIVER,
 };
 use crate::syscfg::ExternalInterruptSourcePort;
 use crate::usart::UsartControl;
@@ -73,12 +74,7 @@ unsafe fn reset() -> ! {
 
     let hello = "Hello World\r\n";
     loop {
-        for character in hello.as_bytes().iter() {
-            USART3.set_data(character.clone());
-            while !USART3.is_transmit_data_register_empty() || !USART3.is_transmission_completed() {
-                no_operation();
-            }
-        }
+        USART3_SINGLE_BYTE_DRIVER.send_bytes(hello.as_bytes());
     }
 }
 
