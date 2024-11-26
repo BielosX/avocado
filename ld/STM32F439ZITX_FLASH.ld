@@ -20,7 +20,8 @@ SECTIONS
     . += 216;
     KEEP(*(.vector_table.exti15_10));
     FILL(0)
-    . += 56;
+    . += 52;
+    KEEP(*(.vector_table.tim6dac));
     KEEP(*(.vector_table.tim7));
   } >FLASH
 

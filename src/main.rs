@@ -4,6 +4,7 @@
 mod asm;
 mod exti;
 mod gpio;
+mod independent_watchdog;
 mod memory;
 mod nvic;
 mod rcc;
@@ -17,10 +18,7 @@ use crate::gpio::AlternateFunction;
 use crate::gpio::PinMode::{Alternate, Input, Output};
 use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
-use crate::stm32f439zitx::{
-    Interrupt, EXTI, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM7, USART3,
-    USART3_SINGLE_BYTE_DRIVER,
-};
+use crate::stm32f439zitx::{Interrupt, EXTI, IWDG, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM6, TIM7, USART3, USART3_SINGLE_BYTE_DRIVER};
 use crate::syscfg::ExternalInterruptSourcePort;
 use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
@@ -35,6 +33,10 @@ unsafe fn reset() -> ! {
     // PD8 USART3TX
     // PD9 USART3RX
     // Enable PB and PC
+    RCC.enable_internal_low_speed_oscillator();
+    while !RCC.is_internal_low_speed_oscillator_ready() {
+        no_operation();
+    }
     RCC.enable_gpio_ports(&[B, C, D]);
     RCC.enable_system_configuration_controller();
     RCC.enable_basic_timer(BasicTimer::TIM7);
@@ -58,8 +60,12 @@ unsafe fn reset() -> ! {
         ..UsartControl::default()
     });
 
-    // Enable interrupts index 40 and 55
-    NVIC.enable_interrupts(&[Interrupt::Exti15_10.into(), Interrupt::Tim7.into()]);
+    // Enable interrupts index 40, 54, 55
+    NVIC.enable_interrupts(&[
+        Interrupt::Exti15_10.into(),
+        Interrupt::Tim7.into(),
+        Interrupt::Tim6Dac.into(),
+    ]);
 
     SYSCFG.set_external_interrupt_source_port(13, ExternalInterruptSourcePort::PortC);
 
@@ -71,6 +77,15 @@ unsafe fn reset() -> ! {
     TIM7.set_prescaler(0xFFFF);
     TIM7.set_auto_reload(0x00FF);
     TIM7.enable_timer();
+
+    IWDG.start_watchdog();
+
+    // TIM6 handler index 54
+    TIM6.update_interrupt_enable();
+    TIM6.set_prescaler(0xFFFF);
+    TIM6.set_auto_reload(0x13EC);
+    TIM6.enable_timer();
+
 
     let hello = "Hello World\r\n";
     loop {
@@ -88,6 +103,10 @@ unsafe fn led_blink() {
     TIM7.clear_status_flag();
 }
 
+unsafe fn feed_watchdog() {
+    IWDG.feed_watchdog();
+}
+
 #[no_mangle]
 #[link_section = ".vector_table.reset"]
 static RESET_HANDLER: unsafe fn() -> ! = reset;
@@ -99,6 +118,10 @@ static BUTTON_HANDLER: unsafe fn() = button_handler;
 #[no_mangle]
 #[link_section = ".vector_table.tim7"]
 static LED_BLINK_HANDLER: unsafe fn() = led_blink;
+
+#[no_mangle]
+#[link_section = ".vector_table.tim6dac"]
+static WATCHDOG_FEED_HANDLER: unsafe fn() = feed_watchdog;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

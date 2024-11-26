@@ -64,4 +64,16 @@ impl RccConf {
             }
         }
     }
+
+    pub fn enable_internal_low_speed_oscillator(&self) {
+        unsafe {
+            let mut current_value: u32 = read_volatile(self.address().add(29));
+            current_value |= 0b1;
+            write_volatile(self.address().add(29), current_value);
+        }
+    }
+
+    pub fn is_internal_low_speed_oscillator_ready(&self) -> bool {
+        unsafe { (read_volatile(self.address().add(29)) & (0b1 << 1)) != 0 }
+    }
 }
