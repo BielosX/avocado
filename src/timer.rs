@@ -28,18 +28,14 @@ impl BasicTimerConf {
     }
 
     pub fn update_interrupt_enable(&self) {
-        unsafe {
-            let mut current_value: u32 = self.reg.read(3);
-            current_value |= 0b1;
-            self.reg.write(current_value, 3);
-        }
+        let mut current_value: u32 = self.reg.read(3);
+        current_value |= 0b1;
+        self.reg.write(current_value, 3);
     }
 
     pub fn enable_timer(&self) {
-        unsafe {
-            let mut current_value: u32 = self.reg.read(0);
-            current_value |= 0b1;
-            self.reg.write(current_value, 0);
-        }
+        let mut current_value: u32 = self.reg.read(0);
+        current_value |= 0b1;
+        self.reg.write(current_value, 0);
     }
 }

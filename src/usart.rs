@@ -55,32 +55,30 @@ impl UsartConf {
     }
 
     pub fn set_usart_control(&self, usart_control: UsartControl) {
-        unsafe {
-            let mut current_value_ctrl1: u32 = self.reg.read(3);
-            let mut current_value_ctrl2: u32 = self.reg.read(4);
-            if let Some(enabled) = usart_control.enabled {
-                current_value_ctrl1 &= !(0b1 << 13);
-                current_value_ctrl1 |= (enabled as u32) << 13;
-            }
-            if let Some(parity_control_enabled) = usart_control.parity_control_enabled {
-                current_value_ctrl1 &= !(0b1 << 10);
-                current_value_ctrl1 |= (parity_control_enabled as u32) << 10;
-            }
-            if let Some(transmitter_enabled) = usart_control.transmitter_enabled {
-                current_value_ctrl1 &= !(0b1 << 3);
-                current_value_ctrl1 |= (transmitter_enabled as u32) << 3;
-            }
-            if let Some(word_length) = usart_control.word_length {
-                current_value_ctrl1 &= !(0b1 << 12);
-                current_value_ctrl1 |= u32::from(word_length) << 12;
-            }
-            if let Some(stop_bits) = usart_control.stop_bits {
-                current_value_ctrl2 &= !(0b11 << 12);
-                current_value_ctrl2 |= u32::from(stop_bits) << 12;
-            }
-            self.reg.write(current_value_ctrl1, 3);
-            self.reg.write(current_value_ctrl2, 4);
+        let mut current_value_ctrl1: u32 = self.reg.read(3);
+        let mut current_value_ctrl2: u32 = self.reg.read(4);
+        if let Some(enabled) = usart_control.enabled {
+            current_value_ctrl1 &= !(0b1 << 13);
+            current_value_ctrl1 |= (enabled as u32) << 13;
         }
+        if let Some(parity_control_enabled) = usart_control.parity_control_enabled {
+            current_value_ctrl1 &= !(0b1 << 10);
+            current_value_ctrl1 |= (parity_control_enabled as u32) << 10;
+        }
+        if let Some(transmitter_enabled) = usart_control.transmitter_enabled {
+            current_value_ctrl1 &= !(0b1 << 3);
+            current_value_ctrl1 |= (transmitter_enabled as u32) << 3;
+        }
+        if let Some(word_length) = usart_control.word_length {
+            current_value_ctrl1 &= !(0b1 << 12);
+            current_value_ctrl1 |= u32::from(word_length) << 12;
+        }
+        if let Some(stop_bits) = usart_control.stop_bits {
+            current_value_ctrl2 &= !(0b11 << 12);
+            current_value_ctrl2 |= u32::from(stop_bits) << 12;
+        }
+        self.reg.write(current_value_ctrl1, 3);
+        self.reg.write(current_value_ctrl2, 4);
     }
 
     // See RM0090 page 981 for details
@@ -90,11 +88,11 @@ impl UsartConf {
     }
 
     pub fn is_transmit_data_register_empty(&self) -> bool {
-        unsafe { self.reg.read(0) & (0b1 << 7) != 0 }
+        self.reg.read(0) & (0b1 << 7) != 0
     }
 
     pub fn is_transmission_completed(&self) -> bool {
-        unsafe { self.reg.read(0) & (0b1 << 6) != 0 }
+        self.reg.read(0) & (0b1 << 6) != 0
     }
 
     pub fn set_data(&self, data: u8) {

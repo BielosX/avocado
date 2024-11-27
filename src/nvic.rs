@@ -14,11 +14,9 @@ impl NvicConf {
     pub fn enable_interrupt(&self, index: u32) {
         let register: usize = (index / 32) as usize;
         let offset = index % 32;
-        unsafe {
-            let mut current_value = self.set_enable_base.read(register);
-            current_value |= 0b1 << offset;
-            self.set_enable_base.write(current_value, register);
-        }
+        let mut current_value = self.set_enable_base.read(register);
+        current_value |= 0b1 << offset;
+        self.set_enable_base.write(current_value, register);
     }
 
     pub fn enable_interrupts(&self, indices: &[u32]) {
