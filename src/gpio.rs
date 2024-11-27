@@ -1,7 +1,7 @@
-use core::ptr::{read_volatile, write_volatile};
+use crate::memory_mapped_io::MemoryMappedIo;
 
 pub struct GpioConf {
-    base: u32,
+    reg: MemoryMappedIo,
 }
 
 #[repr(u32)]
@@ -20,17 +20,14 @@ pub enum AlternateFunction {
 
 impl GpioConf {
     pub const fn new(base: u32) -> GpioConf {
-        GpioConf { base }
-    }
-
-    #[inline(always)]
-    fn address(&self) -> *mut u32 {
-        self.base as *mut u32
+        GpioConf {
+            reg: MemoryMappedIo::new(base),
+        }
     }
 
     pub fn set_pins_mode(&self, mode: PinMode, pins: &[u32]) {
         unsafe {
-            let mut current_value = read_volatile(self.address());
+            let mut current_value = self.reg.read(0);
             let mut mask: u32 = 0;
             let mut mode_value: u32 = 0;
             for element in pins.iter() {
@@ -41,7 +38,7 @@ impl GpioConf {
             }
             current_value &= mask;
             current_value |= mode_value;
-            write_volatile(self.address(), current_value);
+            self.reg.write(current_value, 0);
         }
     }
 
@@ -50,19 +47,16 @@ impl GpioConf {
     }
 
     pub fn set_pin(&self, pin: u32) {
-        unsafe {
-            write_volatile(self.address().add(6), 0b1 << pin);
-        }
+        self.reg.write(0b1 << pin, 6);
     }
 
     pub fn switch_pin_output(&self, pin: u32) {
         unsafe {
-            let pin_value = read_volatile(self.address().add(5)) & (0b1 << pin);
-            let set_reset_address = self.address().add(6);
+            let pin_value = self.reg.read(5) & (0b1 << pin);
             if pin_value != 0 {
-                write_volatile(set_reset_address, 0b1 << (pin + 16));
+                self.reg.write(0b1 << (pin + 16), 6);
             } else {
-                write_volatile(set_reset_address, 0b1 << pin);
+                self.reg.write(0b1 << pin, 6);
             }
         }
     }
@@ -71,11 +65,10 @@ impl GpioConf {
         let shift: u32 = (pin % 8) << 2;
         let offset: usize = (pin / 8) as usize;
         unsafe {
-            let address = self.address().add(8 + offset);
-            let mut current_value = read_volatile(address);
+            let mut current_value = self.reg.read(8 + offset);
             current_value &= !(0b1111 << shift);
             current_value |= (function as u32) << shift;
-            write_volatile(address, current_value);
+            self.reg.write(current_value, 8 + offset);
         }
     }
 }

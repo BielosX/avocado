@@ -6,6 +6,7 @@ mod exti;
 mod gpio;
 mod independent_watchdog;
 mod memory;
+mod memory_mapped_io;
 mod nvic;
 mod rcc;
 mod stm32f439zitx;

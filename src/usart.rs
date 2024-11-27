@@ -1,5 +1,5 @@
 use crate::asm::no_operation;
-use core::ptr::{read_volatile, write_volatile};
+use crate::memory_mapped_io::MemoryMappedIo;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
@@ -44,23 +44,20 @@ impl Default for UsartControl {
 }
 
 pub struct UsartConf {
-    base: u32,
+    reg: MemoryMappedIo,
 }
 
 impl UsartConf {
     pub const fn new(base: u32) -> Self {
-        Self { base }
-    }
-
-    #[inline(always)]
-    fn address(&self) -> *mut u32 {
-        self.base as *mut u32
+        Self {
+            reg: MemoryMappedIo::new(base),
+        }
     }
 
     pub fn set_usart_control(&self, usart_control: UsartControl) {
         unsafe {
-            let mut current_value_ctrl1: u32 = read_volatile(self.address().add(3));
-            let mut current_value_ctrl2: u32 = read_volatile(self.address().add(4));
+            let mut current_value_ctrl1: u32 = self.reg.read(3);
+            let mut current_value_ctrl2: u32 = self.reg.read(4);
             if let Some(enabled) = usart_control.enabled {
                 current_value_ctrl1 &= !(0b1 << 13);
                 current_value_ctrl1 |= (enabled as u32) << 13;
@@ -81,31 +78,27 @@ impl UsartConf {
                 current_value_ctrl2 &= !(0b11 << 12);
                 current_value_ctrl2 |= u32::from(stop_bits) << 12;
             }
-            write_volatile(self.address().add(3), current_value_ctrl1);
-            write_volatile(self.address().add(4), current_value_ctrl2);
+            self.reg.write(current_value_ctrl1, 3);
+            self.reg.write(current_value_ctrl2, 4);
         }
     }
 
     // See RM0090 page 981 for details
     pub fn set_baud_rate(&self, mantissa: u32, fraction: u32) {
         let value: u32 = (mantissa << 4) | fraction;
-        unsafe {
-            write_volatile(self.address().add(2), value);
-        }
+        self.reg.write(value, 2);
     }
 
     pub fn is_transmit_data_register_empty(&self) -> bool {
-        unsafe { (read_volatile(self.address()) & (0b1 << 7)) != 0 }
+        unsafe { self.reg.read(0) & (0b1 << 7) != 0 }
     }
 
     pub fn is_transmission_completed(&self) -> bool {
-        unsafe { (read_volatile(self.address()) & (0b1 << 6)) != 0 }
+        unsafe { self.reg.read(0) & (0b1 << 6) != 0 }
     }
 
     pub fn set_data(&self, data: u8) {
-        unsafe {
-            write_volatile(self.address().add(1), data as u32);
-        }
+        self.reg.write(data as u32, 1);
     }
 }
 

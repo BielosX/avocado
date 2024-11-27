@@ -1,51 +1,45 @@
 use crate::memory::store_barrier;
-use core::ptr::{read_volatile, write_volatile};
+use crate::memory_mapped_io::MemoryMappedIo;
 
 pub struct BasicTimerConf {
-    base: u32,
+    reg: MemoryMappedIo,
 }
 
 impl BasicTimerConf {
     pub const fn new(base: u32) -> Self {
-        BasicTimerConf { base }
-    }
-
-    fn address(&self) -> *mut u32 {
-        self.base as *mut u32
+        BasicTimerConf {
+            reg: MemoryMappedIo::new(base),
+        }
     }
 
     pub fn clear_status_flag(&self) {
         unsafe {
-            write_volatile(self.address().add(4), 0b0);
+            self.reg.write(0b0, 4);
             store_barrier();
         }
     }
 
     pub fn set_prescaler(&self, value: u32) {
-        unsafe {
-            write_volatile(self.address().add(10), value);
-        }
+        self.reg.write(value, 10);
     }
 
     pub fn set_auto_reload(&self, value: u32) {
-        unsafe {
-            write_volatile(self.address().add(11), value);
-        }
+        self.reg.write(value, 11);
     }
 
     pub fn update_interrupt_enable(&self) {
         unsafe {
-            let mut current_value: u32 = read_volatile(self.address().add(3));
+            let mut current_value: u32 = self.reg.read(3);
             current_value |= 0b1;
-            write_volatile(self.address().add(3), current_value);
+            self.reg.write(current_value, 3);
         }
     }
 
     pub fn enable_timer(&self) {
         unsafe {
-            let mut current_value: u32 = read_volatile(self.address());
+            let mut current_value: u32 = self.reg.read(0);
             current_value |= 0b1;
-            write_volatile(self.address(), current_value);
+            self.reg.write(current_value, 0);
         }
     }
 }

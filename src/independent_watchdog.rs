@@ -1,23 +1,20 @@
 use crate::memory::store_barrier;
-use core::ptr::write_volatile;
+use crate::memory_mapped_io::MemoryMappedIo;
 
 pub struct IndependentWatchdogConf {
-    base: u32,
+    reg: MemoryMappedIo,
 }
 
 impl IndependentWatchdogConf {
     pub const fn new(base: u32) -> IndependentWatchdogConf {
-        IndependentWatchdogConf { base }
-    }
-
-    #[inline(always)]
-    fn address(&self) -> *mut u32 {
-        self.base as *mut u32
+        IndependentWatchdogConf {
+            reg: MemoryMappedIo::new(base),
+        }
     }
 
     pub fn set_key(&self, key: u16) {
         unsafe {
-            write_volatile(self.address(), key as u32);
+            self.reg.write(key as u32, 0);
             store_barrier();
         }
     }

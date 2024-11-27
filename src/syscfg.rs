@@ -1,7 +1,7 @@
-use core::ptr::{read_volatile, write_volatile};
+use crate::memory_mapped_io::MemoryMappedIo;
 
 pub struct SysConf {
-    base: u32,
+    reg: MemoryMappedIo,
 }
 
 #[repr(u32)]
@@ -17,11 +17,9 @@ impl From<ExternalInterruptSourcePort> for u32 {
 
 impl SysConf {
     pub const fn new(base: u32) -> Self {
-        SysConf { base }
-    }
-
-    fn address(&self) -> *mut u32 {
-        self.base as *mut u32
+        SysConf {
+            reg: MemoryMappedIo::new(base),
+        }
     }
 
     pub fn set_external_interrupt_source_port(
@@ -33,11 +31,11 @@ impl SysConf {
             let base: *mut u32 = self.address().add(2);
             let register_number = (exti_number >> 2) as usize;
             let register_offset: u32 = exti_number % 4;
-            let mut current_value: u32 = read_volatile(base.add(register_number));
+            let mut current_value: u32 = self.reg.read(2 + register_number);
             current_value &= !(0b1111 << (register_offset << 2));
             let port_value: u32 = port.into();
             current_value |= port_value << (register_offset << 2);
-            write_volatile(base.add(register_number), current_value);
+            self.reg.write(current_value, 2 + register_number);
         }
     }
 }
