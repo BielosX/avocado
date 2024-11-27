@@ -1,5 +1,5 @@
-use core::ptr::write_volatile;
 use crate::memory::store_barrier;
+use core::ptr::write_volatile;
 
 pub struct IndependentWatchdogConf {
     base: u32,
