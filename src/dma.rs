@@ -130,16 +130,12 @@ impl DmaConf {
 
     pub fn clear_stream_interrupt_status_register(&self, stream_id: u32) {
         const VALUE: u32 = 0b1111101;
-        match stream_id {
-            0 => self.reg.write(VALUE, 2),
-            1 => self.reg.write(VALUE << 6, 2),
-            2 => self.reg.write(VALUE << 16, 2),
-            3 => self.reg.write(VALUE << 22, 2),
-            4 => self.reg.write(VALUE, 3),
-            5 => self.reg.write(VALUE << 6, 3),
-            6 => self.reg.write(VALUE << 16, 3),
-            7 => self.reg.write(VALUE << 22, 3),
-            _ => {}
+        const SHIFTS: [u32; 4] = [0, 6, 16, 22];
+        let reset_value = VALUE << SHIFTS[(stream_id % 4) as usize];
+        if stream_id > 3 {
+            self.reg.write(reset_value, 2);
+        } else {
+            self.reg.write(reset_value, 3);
         }
         unsafe {
             store_barrier();
