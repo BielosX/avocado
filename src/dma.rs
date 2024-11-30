@@ -120,7 +120,7 @@ impl DmaConf {
 
     pub fn is_transfer_completed(&self, stream_id: u32) -> bool {
         const SHIFTS: [u32; 4] = [5, 11, 21, 27];
-        let mask = 0b1 << SHIFTS[stream_id % 4];
+        let mask = 0b1 << SHIFTS[(stream_id % 4) as usize];
         if stream_id > 3 {
             self.reg.read(0) & mask  != 0
         } else {
