@@ -30,9 +30,7 @@ impl RccConf {
     }
 
     pub fn enable_system_configuration_controller(&self) {
-        let mut current_value: u32 = self.reg.read(17);
-        current_value |= 0b1 << 14;
-        self.reg.write(current_value, 17);
+        self.reg.set_bit(14, 17);
     }
 
     pub fn enable_basic_timer(&self, timer: BasicTimer) {
@@ -44,21 +42,25 @@ impl RccConf {
     pub fn enable_usart(&self, usart_number: u32) {
         match usart_number {
             3 => {
-                let mut current_value: u32 = self.reg.read(16);
-                current_value |= 0b1 << 18;
-                self.reg.write(current_value, 16);
+                self.reg.set_bit(18, 16);
             }
             _ => {}
         }
     }
 
     pub fn enable_internal_low_speed_oscillator(&self) {
-        let mut current_value: u32 = self.reg.read(29);
-        current_value |= 0b1;
-        self.reg.write(current_value, 29);
+        self.reg.set_bit(0, 29);
     }
 
     pub fn is_internal_low_speed_oscillator_ready(&self) -> bool {
         self.reg.read(29) & (0b1 << 1) != 0
+    }
+
+    pub fn enable_dma(&self, dma_id: u32) {
+        match dma_id {
+            1 => self.reg.set_bit(21, 12),
+            2 => self.reg.set_bit(22, 12),
+            _ => {}
+        }
     }
 }

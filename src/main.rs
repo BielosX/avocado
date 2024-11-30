@@ -2,6 +2,7 @@
 #![no_main]
 
 mod asm;
+mod dma;
 mod exti;
 mod gpio;
 mod independent_watchdog;
@@ -19,10 +20,7 @@ use crate::gpio::AlternateFunction;
 use crate::gpio::PinMode::{Alternate, Input, Output};
 use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
-use crate::stm32f439zitx::{
-    Interrupt, EXTI, IWDG, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM6, TIM7, USART3,
-    USART3_SINGLE_BYTE_DRIVER,
-};
+use crate::stm32f439zitx::{Interrupt, EXTI, IWDG, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM6, TIM7, USART3, USART3_DMA1_DRIVER, USART3_SINGLE_BYTE_DRIVER};
 use crate::syscfg::ExternalInterruptSourcePort;
 use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
@@ -46,6 +44,7 @@ unsafe fn reset() -> ! {
     RCC.enable_basic_timer(BasicTimer::TIM7);
     RCC.enable_basic_timer(BasicTimer::TIM6);
     RCC.enable_usart(3);
+    RCC.enable_dma(1);
     PORT_B.set_pins_mode(Output, &[0, 7, 14]);
     PORT_C.set_pin_mode(Input, 13);
     PORT_B.set_pin(7);
@@ -62,6 +61,7 @@ unsafe fn reset() -> ! {
         transmitter_enabled: Some(true),
         word_length: Some(Len1Start8Data),
         stop_bits: Some(Stop1Bit),
+        dma_transmitter_enabled: Some(true),
         ..UsartControl::default()
     });
 
@@ -92,8 +92,16 @@ unsafe fn reset() -> ! {
     IWDG.start_watchdog();
 
     let hello = "Hello World\r\n";
+    let dma_hello = "Hello World from DMA\r\n";
+    USART3_SINGLE_BYTE_DRIVER.send_bytes(hello.as_bytes());
     loop {
-        USART3_SINGLE_BYTE_DRIVER.send_bytes(hello.as_bytes());
+        if USART3_DMA1_DRIVER.buffer_capacity() < dma_hello.as_bytes().len() {
+            USART3_DMA1_DRIVER.flush(4, 3);
+            while !USART3_DMA1_DRIVER.is_transmission_completed() {
+                no_operation();
+            }
+        }
+        USART3_DMA1_DRIVER.write_buffer(dma_hello.as_bytes());
     }
 }
 

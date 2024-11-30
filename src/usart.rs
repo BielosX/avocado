@@ -1,5 +1,9 @@
 use crate::asm::no_operation;
+use crate::dma::{DmaConf, MemoryIncrementMode, StreamConf};
 use crate::memory_mapped_io::MemoryMappedIo;
+use core::ptr::copy_nonoverlapping;
+use crate::dma::DataTransferDirection::MemoryToPeripheral;
+use crate::dma::PriorityLevel::VeryHigh;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
@@ -27,6 +31,7 @@ pub struct UsartControl {
     pub enabled: Option<bool>,
     pub parity_control_enabled: Option<bool>,
     pub transmitter_enabled: Option<bool>,
+    pub dma_transmitter_enabled: Option<bool>,
     pub word_length: Option<UsartWordLength>,
     pub stop_bits: Option<UsartStopBits>,
 }
@@ -39,6 +44,7 @@ impl Default for UsartControl {
             transmitter_enabled: None,
             word_length: None,
             stop_bits: None,
+            dma_transmitter_enabled: None,
         }
     }
 }
@@ -54,9 +60,14 @@ impl UsartConf {
         }
     }
 
+    pub unsafe fn data_register(&self) -> *mut u32 {
+        self.reg.address().add(1)
+    }
+
     pub fn set_usart_control(&self, usart_control: UsartControl) {
         let mut current_value_ctrl1: u32 = self.reg.read(3);
         let mut current_value_ctrl2: u32 = self.reg.read(4);
+        let mut current_value_ctrl3: u32 = self.reg.read(5);
         if let Some(enabled) = usart_control.enabled {
             current_value_ctrl1 &= !(0b1 << 13);
             current_value_ctrl1 |= (enabled as u32) << 13;
@@ -77,8 +88,13 @@ impl UsartConf {
             current_value_ctrl2 &= !(0b11 << 12);
             current_value_ctrl2 |= u32::from(stop_bits) << 12;
         }
+        if let Some(enabled) = usart_control.dma_transmitter_enabled {
+            current_value_ctrl3 &= !(0b1 << 7);
+            current_value_ctrl3 |= (enabled as u32) << 7;
+        }
         self.reg.write(current_value_ctrl1, 3);
         self.reg.write(current_value_ctrl2, 4);
+        self.reg.write(current_value_ctrl3, 5);
     }
 
     // See RM0090 page 981 for details
@@ -97,6 +113,10 @@ impl UsartConf {
 
     pub fn set_data(&self, data: u8) {
         self.reg.write(data as u32, 1);
+    }
+
+    pub fn clear_transmission_complete(&self) {
+        self.reg.clear_bit(6, 0);
     }
 }
 
@@ -119,6 +139,68 @@ impl<'a> UsartSingleByteDriver<'a> {
                     no_operation();
                 }
             }
+        }
+    }
+}
+
+pub struct UsartDmaDriver<'a, const BUFFER_SIZE: usize> {
+    control: &'a UsartConf,
+    dma: &'a DmaConf,
+    buffer: [u8; BUFFER_SIZE],
+    buffer_offset: usize,
+}
+
+impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
+    pub const fn new(control: &'a UsartConf, dma: &'a DmaConf) -> UsartDmaDriver<'a, BUFFER_SIZE> {
+        UsartDmaDriver {
+            control,
+            dma,
+            buffer: [0; BUFFER_SIZE],
+            buffer_offset: 0,
+        }
+    }
+
+    pub fn is_transmission_completed(&self) -> bool {
+        self.control.is_transmission_completed()
+    }
+
+    pub fn buffer_capacity(&self) -> usize {
+        BUFFER_SIZE - self.buffer_offset
+    }
+
+    pub fn write_buffer(&mut self, source: &[u8]) -> usize {
+        let bytes_to_write = if source.len() > self.buffer_capacity() {
+            self.buffer_capacity()
+        } else {
+            source.len()
+        };
+        if bytes_to_write > 0 {
+            unsafe {
+                copy_nonoverlapping(
+                    source.as_ptr(),
+                    self.buffer.as_mut_ptr().add(self.buffer_offset),
+                    bytes_to_write,
+                );
+            }
+            self.buffer_offset += bytes_to_write;
+        }
+        bytes_to_write
+    }
+
+    pub fn flush(&self, chanel: u8, stream_id: u32) {
+        unsafe {
+            self.control.clear_transmission_complete();
+            self.dma.clear_stream_interrupt_status_register(stream_id);
+            self.dma.set_stream_data_length(stream_id, self.buffer_offset as u16);
+            self.dma.set_stream_memory0_address(stream_id, self.buffer.as_ptr() as u32);
+            self.dma.set_stream_peripheral_address(stream_id, self.control.data_register() as u32);
+            self.dma.set_stream_config(stream_id, StreamConf {
+                enabled: Some(true),
+                data_transfer_direction: Some(MemoryToPeripheral),
+                memory_increment_mode: Some(MemoryIncrementMode::AddressIncrement),
+                channel: Some(chanel),
+                priority_level: Some(VeryHigh),
+            })
         }
     }
 }

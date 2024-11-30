@@ -1,3 +1,4 @@
+use crate::dma::DmaConf;
 use crate::exti::ExtiConf;
 use crate::gpio::GpioConf;
 use crate::independent_watchdog::IndependentWatchdogConf;
@@ -5,7 +6,7 @@ use crate::nvic::NvicConf;
 use crate::rcc::RccConf;
 use crate::syscfg::SysConf;
 use crate::timer::BasicTimerConf;
-use crate::usart::{UsartConf, UsartSingleByteDriver};
+use crate::usart::{UsartConf, UsartDmaDriver, UsartSingleByteDriver};
 
 pub static PORT_B: GpioConf = GpioConf::new(0x40020400);
 pub static PORT_C: GpioConf = GpioConf::new(0x40020800);
@@ -19,6 +20,8 @@ pub static SYSCFG: SysConf = SysConf::new(0x40013800);
 pub static USART3: UsartConf = UsartConf::new(0x40004800);
 pub static USART3_SINGLE_BYTE_DRIVER: UsartSingleByteDriver = UsartSingleByteDriver::new(&USART3);
 pub static IWDG: IndependentWatchdogConf = IndependentWatchdogConf::new(0x40003000);
+pub static DMA1: DmaConf = DmaConf::new(0x40026000);
+pub static mut USART3_DMA1_DRIVER: UsartDmaDriver<1024> = UsartDmaDriver::new(&USART3, &DMA1);
 
 #[repr(u32)]
 pub enum Interrupt {
