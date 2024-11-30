@@ -118,6 +118,16 @@ impl DmaConf {
         self.reg.write(address, (7 + 6 * stream_id) as usize)
     }
 
+    pub fn is_transfer_completed(&self, stream_id: u32) -> bool {
+        const SHIFTS: [u32; 4] = [5, 11, 21, 27];
+        let mask = 0b1 << SHIFTS[stream_id % 4];
+        if stream_id > 3 {
+            self.reg.read(0) & mask  != 0
+        } else {
+            self.reg.read(1) & mask != 0
+        }
+    }
+
     pub fn clear_stream_interrupt_status_register(&self, stream_id: u32) {
         const VALUE: u32 = 0b1111101;
         match stream_id {

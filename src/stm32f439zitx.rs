@@ -21,7 +21,7 @@ pub static USART3: UsartConf = UsartConf::new(0x40004800);
 pub static USART3_SINGLE_BYTE_DRIVER: UsartSingleByteDriver = UsartSingleByteDriver::new(&USART3);
 pub static IWDG: IndependentWatchdogConf = IndependentWatchdogConf::new(0x40003000);
 pub static DMA1: DmaConf = DmaConf::new(0x40026000);
-pub static mut USART3_DMA1_DRIVER: UsartDmaDriver<1024> = UsartDmaDriver::new(&USART3, &DMA1);
+pub static mut USART3_DMA1_DRIVER: UsartDmaDriver<1024> = UsartDmaDriver::new(&USART3, &DMA1, 3, 4);
 
 #[repr(u32)]
 pub enum Interrupt {

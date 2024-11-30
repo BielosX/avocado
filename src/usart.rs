@@ -2,9 +2,9 @@ use crate::asm::no_operation;
 use crate::dma::DataTransferDirection::MemoryToPeripheral;
 use crate::dma::PriorityLevel::VeryHigh;
 use crate::dma::{DmaConf, MemoryIncrementMode, StreamConf};
+use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
 use core::ptr::copy_nonoverlapping;
-use crate::memory::store_barrier;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
@@ -149,20 +149,29 @@ pub struct UsartDmaDriver<'a, const BUFFER_SIZE: usize> {
     dma: &'a DmaConf,
     buffer: [u8; BUFFER_SIZE],
     buffer_offset: usize,
+    stream_id: u32,
+    channel: u8,
 }
 
 impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
-    pub const fn new(control: &'a UsartConf, dma: &'a DmaConf) -> UsartDmaDriver<'a, BUFFER_SIZE> {
+    pub const fn new(
+        control: &'a UsartConf,
+        dma: &'a DmaConf,
+        stream_id: u32,
+        channel: u8,
+    ) -> UsartDmaDriver<'a, BUFFER_SIZE> {
         UsartDmaDriver {
             control,
             dma,
             buffer: [0; BUFFER_SIZE],
             buffer_offset: 0,
+            stream_id,
+            channel,
         }
     }
 
     pub fn is_transmission_completed(&self) -> bool {
-        self.control.is_transmission_completed()
+        self.control.is_transmission_completed() && self.dma.is_transfer_completed(self.stream_id)
     }
 
     pub fn buffer_capacity(&self) -> usize {
@@ -188,25 +197,26 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
         bytes_to_write
     }
 
-    pub fn flush(&self, chanel: u8, stream_id: u32) {
+    pub fn flush(&self) {
         unsafe {
             self.control.clear_transmission_complete();
-            self.dma.disable_stream(stream_id);
-            self.dma.clear_stream_interrupt_status_register(stream_id);
+            self.dma.disable_stream(self.stream_id);
             self.dma
-                .set_stream_data_length(stream_id, self.buffer_offset as u16);
+                .clear_stream_interrupt_status_register(self.stream_id);
             self.dma
-                .set_stream_memory0_address(stream_id, self.buffer.as_ptr() as u32);
+                .set_stream_data_length(self.stream_id, self.buffer_offset as u16);
             self.dma
-                .set_stream_peripheral_address(stream_id, self.control.data_register() as u32);
+                .set_stream_memory0_address(self.stream_id, self.buffer.as_ptr() as u32);
+            self.dma
+                .set_stream_peripheral_address(self.stream_id, self.control.data_register() as u32);
             store_barrier();
             self.dma.set_stream_config(
-                stream_id,
+                self.stream_id,
                 StreamConf {
                     enabled: Some(true),
                     data_transfer_direction: Some(MemoryToPeripheral),
                     memory_increment_mode: Some(MemoryIncrementMode::AddressIncrement),
-                    channel: Some(chanel),
+                    channel: Some(self.channel),
                     priority_level: Some(VeryHigh),
                 },
             );

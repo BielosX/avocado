@@ -99,7 +99,7 @@ unsafe fn reset() -> ! {
     USART3_SINGLE_BYTE_DRIVER.send_bytes(hello.as_bytes());
     loop {
         if USART3_DMA1_DRIVER.buffer_capacity() < dma_hello.as_bytes().len() {
-            USART3_DMA1_DRIVER.flush(4, 3);
+            USART3_DMA1_DRIVER.flush();
             while !USART3_DMA1_DRIVER.is_transmission_completed() {
                 no_operation();
             }
