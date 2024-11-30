@@ -32,6 +32,5 @@ impl MemoryMappedIo {
         let mut current_value = self.read(offset);
         current_value &= !(0b1 << bit_number);
         self.write(current_value, offset);
-
     }
 }

@@ -62,6 +62,16 @@ impl DmaConf {
         }
     }
 
+    pub fn disable_stream(&self, stream_id: u32) {
+        self.set_stream_config(
+            stream_id,
+            StreamConf {
+                enabled: Some(false),
+                ..StreamConf::default()
+            },
+        );
+    }
+
     /*
        Before setting EN bit to '1' to start a new transfer, the event flags corresponding to the
        stream in DMA_LISR or DMA_HISR register must be cleared.

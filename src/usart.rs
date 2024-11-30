@@ -1,9 +1,9 @@
 use crate::asm::no_operation;
+use crate::dma::DataTransferDirection::MemoryToPeripheral;
+use crate::dma::PriorityLevel::VeryHigh;
 use crate::dma::{DmaConf, MemoryIncrementMode, StreamConf};
 use crate::memory_mapped_io::MemoryMappedIo;
 use core::ptr::copy_nonoverlapping;
-use crate::dma::DataTransferDirection::MemoryToPeripheral;
-use crate::dma::PriorityLevel::VeryHigh;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
@@ -190,17 +190,24 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
     pub fn flush(&self, chanel: u8, stream_id: u32) {
         unsafe {
             self.control.clear_transmission_complete();
+            self.dma.disable_stream(stream_id);
             self.dma.clear_stream_interrupt_status_register(stream_id);
-            self.dma.set_stream_data_length(stream_id, self.buffer_offset as u16);
-            self.dma.set_stream_memory0_address(stream_id, self.buffer.as_ptr() as u32);
-            self.dma.set_stream_peripheral_address(stream_id, self.control.data_register() as u32);
-            self.dma.set_stream_config(stream_id, StreamConf {
-                enabled: Some(true),
-                data_transfer_direction: Some(MemoryToPeripheral),
-                memory_increment_mode: Some(MemoryIncrementMode::AddressIncrement),
-                channel: Some(chanel),
-                priority_level: Some(VeryHigh),
-            })
+            self.dma
+                .set_stream_data_length(stream_id, self.buffer_offset as u16);
+            self.dma
+                .set_stream_memory0_address(stream_id, self.buffer.as_ptr() as u32);
+            self.dma
+                .set_stream_peripheral_address(stream_id, self.control.data_register() as u32);
+            self.dma.set_stream_config(
+                stream_id,
+                StreamConf {
+                    enabled: Some(true),
+                    data_transfer_direction: Some(MemoryToPeripheral),
+                    memory_increment_mode: Some(MemoryIncrementMode::AddressIncrement),
+                    channel: Some(chanel),
+                    priority_level: Some(VeryHigh),
+                },
+            )
         }
     }
 }
