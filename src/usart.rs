@@ -4,6 +4,7 @@ use crate::dma::PriorityLevel::VeryHigh;
 use crate::dma::{DmaConf, MemoryIncrementMode, StreamConf};
 use crate::memory_mapped_io::MemoryMappedIo;
 use core::ptr::copy_nonoverlapping;
+use crate::memory::store_barrier;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
@@ -198,6 +199,7 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
                 .set_stream_memory0_address(stream_id, self.buffer.as_ptr() as u32);
             self.dma
                 .set_stream_peripheral_address(stream_id, self.control.data_register() as u32);
+            store_barrier();
             self.dma.set_stream_config(
                 stream_id,
                 StreamConf {
@@ -207,7 +209,7 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
                     channel: Some(chanel),
                     priority_level: Some(VeryHigh),
                 },
-            )
+            );
         }
     }
 }
