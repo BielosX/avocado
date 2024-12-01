@@ -89,20 +89,27 @@ impl DmaConf {
         }
     }
 
+    #[inline(always)]
+    fn stream_config_offset(stream_id: u32) -> usize {
+        (4 + 6 * stream_id) as usize
+    }
+
     pub fn enable_stream(&self, stream_id: u32) {
-        let offset: usize = (4 + 6 * stream_id) as usize;
-        self.reg.set_bit(0, offset);
+        self.reg.set_bit(0, Self::stream_config_offset(stream_id));
         unsafe {
             store_barrier();
         }
     }
 
     pub fn disable_stream(&self, stream_id: u32) {
-        let offset: usize = (4 + 6 * stream_id) as usize;
-        self.reg.clear_bit(0, offset);
+        self.reg.clear_bit(0, Self::stream_config_offset(stream_id));
         unsafe {
             store_barrier();
         }
+    }
+
+    pub fn is_stream_disabled(&self, stream_id: u32) -> bool {
+        self.reg.read(Self::stream_config_offset(stream_id)) & 0b1 == 0
     }
 
     /*
@@ -110,7 +117,7 @@ impl DmaConf {
        stream in DMA_LISR or DMA_HISR register must be cleared.
     */
     pub fn set_stream_config(&self, stream_id: u32, config: StreamConf) {
-        let offset: usize = (4 + 6 * stream_id) as usize;
+        let offset: usize = Self::stream_config_offset(stream_id);
         let mut current_value: u32 = self.reg.read(offset);
         if let Some(data_transfer_direction) = config.data_transfer_direction {
             current_value &= !(0b11 << 6);

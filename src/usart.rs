@@ -201,6 +201,9 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
         unsafe {
             self.control.clear_transmission_complete();
             self.dma.disable_stream(self.stream_id);
+            while !self.dma.is_stream_disabled(self.stream_id) {
+                no_operation();
+            }
             self.dma
                 .clear_stream_interrupt_status_register(self.stream_id);
             self.dma
