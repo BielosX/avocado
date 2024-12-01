@@ -1,16 +1,41 @@
 use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
 
+#[repr(u32)]
 pub enum DataTransferDirection {
     MemoryToPeripheral = 0b10,
 }
 
+#[repr(u32)]
 pub enum MemoryIncrementMode {
     AddressIncrement = 0b1,
 }
 
+#[repr(u32)]
 pub enum PriorityLevel {
     VeryHigh = 0b11,
+}
+
+#[repr(u32)]
+pub enum MemoryDataSize {
+    Byte = 0b00,
+}
+
+#[repr(u32)]
+pub enum PeripheralDataSize {
+    Byte = 0b00,
+}
+
+impl From<PeripheralDataSize> for u32 {
+    fn from(value: PeripheralDataSize) -> Self {
+        value as u32
+    }
+}
+
+impl From<MemoryDataSize> for u32 {
+    fn from(value: MemoryDataSize) -> Self {
+        value as u32
+    }
 }
 
 impl From<DataTransferDirection> for u32 {
@@ -32,21 +57,23 @@ impl From<PriorityLevel> for u32 {
 }
 
 pub struct StreamConf {
-    pub enabled: Option<bool>,
     pub data_transfer_direction: Option<DataTransferDirection>,
     pub memory_increment_mode: Option<MemoryIncrementMode>,
     pub channel: Option<u8>,
     pub priority_level: Option<PriorityLevel>,
+    pub memory_data_size: Option<MemoryDataSize>,
+    pub peripheral_data_size: Option<PeripheralDataSize>,
 }
 
 impl Default for StreamConf {
     fn default() -> Self {
         StreamConf {
-            enabled: None,
             data_transfer_direction: None,
             memory_increment_mode: None,
             channel: None,
             priority_level: None,
+            memory_data_size: None,
+            peripheral_data_size: None,
         }
     }
 }
@@ -62,14 +89,20 @@ impl DmaConf {
         }
     }
 
+    pub fn enable_stream(&self, stream_id: u32) {
+        let offset: usize = (4 + 6 * stream_id) as usize;
+        self.reg.set_bit(0, offset);
+        unsafe {
+            store_barrier();
+        }
+    }
+
     pub fn disable_stream(&self, stream_id: u32) {
-        self.set_stream_config(
-            stream_id,
-            StreamConf {
-                enabled: Some(false),
-                ..StreamConf::default()
-            },
-        );
+        let offset: usize = (4 + 6 * stream_id) as usize;
+        self.reg.clear_bit(0, offset);
+        unsafe {
+            store_barrier();
+        }
     }
 
     /*
@@ -79,17 +112,13 @@ impl DmaConf {
     pub fn set_stream_config(&self, stream_id: u32, config: StreamConf) {
         let offset: usize = (4 + 6 * stream_id) as usize;
         let mut current_value: u32 = self.reg.read(offset);
-        if let Some(enabled) = config.enabled {
-            current_value &= !0b1;
-            current_value |= enabled as u32;
-        }
         if let Some(data_transfer_direction) = config.data_transfer_direction {
             current_value &= !(0b11 << 6);
             current_value |= u32::from(data_transfer_direction) << 6;
         }
         if let Some(channel) = config.channel {
             current_value &= !(0b111 << 25);
-            current_value |= channel as u32;
+            current_value |= (channel as u32) << 25;
         }
         if let Some(memory_increment_mode) = config.memory_increment_mode {
             current_value &= !(0b1 << 10);
@@ -98,6 +127,14 @@ impl DmaConf {
         if let Some(priority_level) = config.priority_level {
             current_value &= !(0b11 << 16);
             current_value |= u32::from(priority_level) << 16;
+        }
+        if let Some(memory_data_size) = config.memory_data_size {
+            current_value &= !(0b11 << 13);
+            current_value |= u32::from(memory_data_size) << 13;
+        }
+        if let Some(peripheral_data_size) = config.peripheral_data_size {
+            current_value &= !(0b11 << 11);
+            current_value |= u32::from(peripheral_data_size) << 11;
         }
         self.reg.write(current_value, offset);
     }
@@ -122,7 +159,7 @@ impl DmaConf {
         const SHIFTS: [u32; 4] = [5, 11, 21, 27];
         let mask = 0b1 << SHIFTS[(stream_id % 4) as usize];
         if stream_id > 3 {
-            self.reg.read(0) & mask  != 0
+            self.reg.read(0) & mask != 0
         } else {
             self.reg.read(1) & mask != 0
         }

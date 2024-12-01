@@ -1,7 +1,7 @@
 use crate::asm::no_operation;
 use crate::dma::DataTransferDirection::MemoryToPeripheral;
 use crate::dma::PriorityLevel::VeryHigh;
-use crate::dma::{DmaConf, MemoryIncrementMode, StreamConf};
+use crate::dma::{DmaConf, MemoryDataSize, MemoryIncrementMode, PeripheralDataSize, StreamConf};
 use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
 use core::ptr::copy_nonoverlapping;
@@ -171,7 +171,7 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
     }
 
     pub fn is_transmission_completed(&self) -> bool {
-        self.control.is_transmission_completed() && self.dma.is_transfer_completed(self.stream_id)
+        self.control.is_transmission_completed()
     }
 
     pub fn buffer_capacity(&self) -> usize {
@@ -209,17 +209,19 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
                 .set_stream_memory0_address(self.stream_id, self.buffer.as_ptr() as u32);
             self.dma
                 .set_stream_peripheral_address(self.stream_id, self.control.data_register() as u32);
-            store_barrier();
             self.dma.set_stream_config(
                 self.stream_id,
                 StreamConf {
-                    enabled: Some(true),
                     data_transfer_direction: Some(MemoryToPeripheral),
                     memory_increment_mode: Some(MemoryIncrementMode::AddressIncrement),
                     channel: Some(self.channel),
                     priority_level: Some(VeryHigh),
+                    memory_data_size: Some(MemoryDataSize::Byte),
+                    peripheral_data_size: Some(PeripheralDataSize::Byte),
                 },
             );
+            store_barrier();
+            self.dma.enable_stream(self.stream_id);
         }
     }
 }
