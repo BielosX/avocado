@@ -159,9 +159,9 @@ impl DmaConf {
         const SHIFTS: [u32; 4] = [5, 11, 21, 27];
         let mask = 0b1 << SHIFTS[(stream_id % 4) as usize];
         if stream_id > 3 {
-            self.reg.read(0) & mask != 0
-        } else {
             self.reg.read(1) & mask != 0
+        } else {
+            self.reg.read(0) & mask != 0
         }
     }
 
@@ -170,9 +170,9 @@ impl DmaConf {
         const SHIFTS: [u32; 4] = [0, 6, 16, 22];
         let reset_value = VALUE << SHIFTS[(stream_id % 4) as usize];
         if stream_id > 3 {
-            self.reg.write(reset_value, 2);
-        } else {
             self.reg.write(reset_value, 3);
+        } else {
+            self.reg.write(reset_value, 2);
         }
         unsafe {
             store_barrier();

@@ -171,7 +171,7 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
     }
 
     pub fn is_transmission_completed(&self) -> bool {
-        self.control.is_transmission_completed()
+        self.control.is_transmission_completed() && self.dma.is_transfer_completed(self.stream_id)
     }
 
     pub fn buffer_capacity(&self) -> usize {
