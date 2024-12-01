@@ -95,7 +95,7 @@ unsafe fn reset() -> ! {
     IWDG.start_watchdog();
 
     let hello = "Hello World\r\n";
-    let dma_hello = "Hello World from DMA\r\n";
+    let dma_hello = "DMA Works Fine\r\n";
     USART3_SINGLE_BYTE_DRIVER.send_bytes(hello.as_bytes());
     loop {
         if USART3_DMA1_DRIVER.buffer_capacity() < dma_hello.as_bytes().len() {

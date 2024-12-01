@@ -3,7 +3,7 @@ use crate::memory_mapped_io::MemoryMappedIo;
 
 #[repr(u32)]
 pub enum DataTransferDirection {
-    MemoryToPeripheral = 0b10,
+    MemoryToPeripheral = 0b01,
 }
 
 #[repr(u32)]
