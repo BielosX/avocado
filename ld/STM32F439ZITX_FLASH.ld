@@ -35,4 +35,10 @@ SECTIONS
     *(.rodata)
     *(.rodata.*)
   } >FLASH
+
+  .data :
+  {
+    *(.data)
+    *(.data.*)
+  } >RAM
 }
