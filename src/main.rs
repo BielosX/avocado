@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![allow(static_mut_refs)]
 
 mod asm;
 mod dma;
@@ -94,17 +95,11 @@ unsafe fn reset() -> ! {
 
     IWDG.start_watchdog();
 
-    let hello = "Hello World\r\n";
-    let dma_hello = "DMA Works Fine\r\n";
-    USART3_SINGLE_BYTE_DRIVER.send_bytes(hello.as_bytes());
+    const HELLO: &str = "Hello World\r\n";
+    const DMA_HELLO: &str = "DMA Works Fine";
+    USART3_SINGLE_BYTE_DRIVER.send_bytes(HELLO.as_bytes());
     loop {
-        if USART3_DMA1_DRIVER.buffer_capacity() < dma_hello.as_bytes().len() {
-            USART3_DMA1_DRIVER.flush();
-            while !USART3_DMA1_DRIVER.is_transmission_completed() {
-                no_operation();
-            }
-        }
-        USART3_DMA1_DRIVER.write_buffer(dma_hello.as_bytes());
+        USART3_DMA1_DRIVER.print_line(DMA_HELLO);
     }
 }
 

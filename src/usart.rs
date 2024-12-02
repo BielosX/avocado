@@ -197,7 +197,7 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
         bytes_to_write
     }
 
-    pub fn flush(&self) {
+    pub fn flush(&mut self) {
         unsafe {
             self.control.clear_transmission_complete();
             self.dma.disable_stream(self.stream_id);
@@ -225,6 +225,30 @@ impl<'a, const BUFFER_SIZE: usize> UsartDmaDriver<'a, BUFFER_SIZE> {
             );
             store_barrier();
             self.dma.enable_stream(self.stream_id);
+            self.buffer_offset = 0;
+        }
+    }
+
+    pub fn print_line(&mut self, string: &str) {
+        let payload = string.as_bytes();
+        const END_OF_LINE: &[u8] = "\r\n".as_bytes();
+        let mut saved = 0;
+        let mut end_of_line_saved = 0;
+        loop {
+            saved += self.write_buffer(&payload[saved..]);
+            if saved == payload.len() {
+                end_of_line_saved += self.write_buffer(&END_OF_LINE[end_of_line_saved..]);
+            }
+            if end_of_line_saved == END_OF_LINE.len() {
+                break;
+            } else {
+                self.flush();
+                while !self.is_transmission_completed() {
+                    unsafe {
+                        no_operation();
+                    }
+                }
+            }
         }
     }
 }
