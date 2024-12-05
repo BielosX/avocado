@@ -157,7 +157,7 @@ impl RccConf {
         division_48mhz_click: u8,
     ) {
         let mut current_value = self.reg.read(1);
-        current_value &= !(0b1 << 22);
+        current_value &= !(0b1 << 22); // PLL Clock Source
         match clock_source {
             PllClockSource::HSI => {
                 self.enable_hsi();
@@ -167,11 +167,11 @@ impl RccConf {
                 current_value |= 0b1 << 22;
             }
         }
-        current_value &= !(0b111111111 << 6);
+        current_value &= !(0b111111111 << 6); // [14:6] PLLN
         current_value |= (multiplication_factor as u32) << 6;
-        current_value &= !0b111111;
+        current_value &= !0b111111; // [5:0] PLLM
         current_value |= division_factor as u32;
-        current_value &= !(0b11 << 16);
+        current_value &= !(0b11 << 16); // [17:16] PLLP
         match division_main_system_clock {
             2 => current_value |= 0b00 << 16,
             4 => current_value |= 0b01 << 16,
@@ -179,7 +179,7 @@ impl RccConf {
             8 => current_value |= 0b11 << 16,
             _ => {}
         }
-        current_value &= !(0b1111 << 24);
+        current_value &= !(0b1111 << 24); // [27:24] PLLQ
         current_value |= (division_48mhz_click as u32) << 24;
         self.reg.write(current_value, 1);
         unsafe {
@@ -198,7 +198,7 @@ impl RccConf {
 
     pub fn set_system_clock(&self, system_clock: SystemClock) {
         let mut current_value = self.reg.read(2);
-        current_value &= 0b11;
+        current_value &= 0b11; // [1:0] SW
         current_value |= u32::from(system_clock.clone());
         self.reg.write(current_value, 2);
         unsafe {
@@ -222,8 +222,8 @@ impl RccConf {
     // Advanced Peripheral Bus
     pub fn set_apb_prescaler(&self, high_speed: u8, low_speed: u8) {
         let mut current_value = self.reg.read(2);
-        current_value &= !(0b111 << 13);
-        current_value &= !(0b111 << 10);
+        current_value &= !(0b111 << 13); // [15:13] PPRE2
+        current_value &= !(0b111 << 10); // [12:10] PPRE1
         current_value |= Self::calculate_apb_prescaler(high_speed) << 13;
         current_value |= Self::calculate_apb_prescaler(low_speed) << 10;
         self.reg.write(current_value, 2);
@@ -246,7 +246,7 @@ impl RccConf {
     // Advanced High-performance Bus
     pub fn set_ahb_prescaler(&self, divider: u16) {
         let mut current_value = self.reg.read(2);
-        current_value &= !(0b1111 << 4);
+        current_value &= !(0b1111 << 4); // [7:4] HPRE
         current_value |= Self::calculate_ahb_prescaler(divider) << 4;
         self.reg.write(current_value, 2);
     }
