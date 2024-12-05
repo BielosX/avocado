@@ -40,7 +40,7 @@ impl From<SystemClock> for u32 {
 
 impl PartialEq for SystemClock {
     fn eq(&self, other: &Self) -> bool {
-        u32::from(self) == u32::from(other)
+        u32::from(*self) == u32::from(*other)
     }
 }
 
