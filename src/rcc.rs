@@ -117,7 +117,7 @@ impl RccConf {
 
     // High Speed External Clock Signal
     pub fn enable_hse(&self) {
-        self.reg.set_bit(18, 0);
+        self.reg.set_bit(16, 0);
         while !self.is_hse_ready() {
             unsafe {
                 no_operation();
