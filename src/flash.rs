@@ -20,7 +20,7 @@ impl FlashConf {
         self.reg.write(current_value, 0);
         unsafe {
             store_barrier();
-            while !(self.reg.read(0) & 0b1111 != (latency as u32)) {
+            while self.reg.read(0) & 0b1111 != (latency as u32) {
                 no_operation();
             }
         }
