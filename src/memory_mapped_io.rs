@@ -33,4 +33,8 @@ impl MemoryMappedIo {
         current_value &= !(0b1 << bit_number);
         self.write(current_value, offset);
     }
+
+    pub fn is_bit_set(&self, bit_number: u32, offset: usize) -> bool {
+        self.read(offset) & (0b1 << bit_number) != 0
+    }
 }

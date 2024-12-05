@@ -5,6 +5,7 @@
 mod asm;
 mod dma;
 mod exti;
+mod flash;
 mod gpio;
 mod independent_watchdog;
 mod memory;
@@ -16,13 +17,14 @@ mod syscfg;
 mod timer;
 mod usart;
 
-use crate::asm::no_operation;
 use crate::gpio::AlternateFunction;
 use crate::gpio::PinMode::{Alternate, Input, Output};
 use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
+use crate::rcc::PllClockSource::HSE;
+use crate::rcc::SystemClock::PLL;
 use crate::stm32f439zitx::{
-    Interrupt, EXTI, IWDG, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM6, TIM7, USART3,
+    Interrupt, EXTI, FLASH, IWDG, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM6, TIM7, USART3,
     USART3_DMA1_DRIVER, USART3_SINGLE_BYTE_DRIVER,
 };
 use crate::syscfg::ExternalInterruptSourcePort;
@@ -30,6 +32,21 @@ use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
 use crate::usart::UsartWordLength::Len1Start8Data;
 use core::panic::PanicInfo;
+
+/*
+    SYSCLK = 168MHz
+    PCLK1 = 42MHz
+    PCLK2 = 84MHz
+ */
+fn setup_clock() {
+    RCC.enable_internal_low_speed_oscillator();
+    RCC.configure_main_pll(HSE, 168, 4, 2, 7);
+    RCC.enable_main_pll();
+    FLASH.set_latency(5);
+    RCC.set_apb_prescaler(2, 4);
+    RCC.set_ahb_prescaler(1);
+    RCC.set_system_clock(PLL);
+}
 
 unsafe fn reset() -> ! {
     // Blue LED PB7
@@ -39,10 +56,7 @@ unsafe fn reset() -> ! {
     // PD8 USART3TX
     // PD9 USART3RX
     // Enable PB and PC
-    RCC.enable_internal_low_speed_oscillator();
-    while !RCC.is_internal_low_speed_oscillator_ready() {
-        no_operation();
-    }
+    setup_clock();
     RCC.enable_gpio_ports(&[B, C, D]);
     RCC.enable_system_configuration_controller();
     RCC.enable_basic_timer(BasicTimer::TIM7);
@@ -84,7 +98,7 @@ unsafe fn reset() -> ! {
     // TIM7 handler index 55
     TIM7.update_interrupt_enable();
     TIM7.set_prescaler(0xFFFF);
-    TIM7.set_auto_reload(0x00FF);
+    TIM7.set_auto_reload(0x0285);
     TIM7.enable_timer();
 
     // TIM6 handler index 54
