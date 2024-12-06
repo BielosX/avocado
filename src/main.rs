@@ -34,17 +34,17 @@ use crate::usart::UsartWordLength::Len1Start8Data;
 use core::panic::PanicInfo;
 
 /*
-    SYSCLK = 168MHz
-    PCLK1 = 42MHz
-    PCLK2 = 84MHz
- */
+   SYSCLK = 168MHz
+   PCLK1 = 42MHz
+   PCLK2 = 84MHz
+*/
 fn setup_clock() {
     RCC.enable_internal_low_speed_oscillator();
-    RCC.configure_main_pll(HSE, 168, 4, 2, 7);
-    RCC.enable_main_pll();
-    FLASH.set_latency(5);
+    RCC.configure_main_pll(HSE, true, 168, 4, 2, 7);
     RCC.set_apb_prescaler(2, 4);
     RCC.set_ahb_prescaler(1);
+    RCC.enable_main_pll();
+    FLASH.set_latency(5);
     RCC.set_system_clock(PLL);
 }
 
@@ -71,8 +71,12 @@ unsafe fn reset() -> ! {
     PORT_D.set_alternate_function(8, AlternateFunction::Usart1_3);
     PORT_D.set_alternate_function(9, AlternateFunction::Usart1_3);
 
-    // 9.6KBps 104.1875 = 104 + 3/16 (Oversampling by 8 disabled)
-    USART3.set_baud_rate(104, 3);
+    /*
+       9.6KBps
+       USART3 APB1 PCLK1 42MHz
+       273.4375 = 273 + 7/16
+    */
+    USART3.set_baud_rate(273, 7);
     USART3.set_usart_control(UsartControl {
         enabled: Some(true),
         parity_control_enabled: Some(false),

@@ -2,6 +2,7 @@ use crate::asm::no_operation;
 use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
 use crate::rcc::SystemClock::{HSE, HSI, PLL};
+use crate::stm32f439zitx::RCC;
 
 pub struct RccConf {
     reg: MemoryMappedIo,
@@ -57,6 +58,12 @@ impl TryFrom<u32> for SystemClock {
     }
 }
 
+const RCC_PLLCFGR: usize = 0x04 >> 2;
+const RCC_CFGR: usize = 0x08 >> 2;
+const RCC_AHB1ENR: usize = 0x30 >> 2;
+const RCC_APB1ENR: usize = 0x40 >> 2;
+const RCC_APB2ENR: usize = 0x44 >> 2;
+
 impl RccConf {
     pub const fn new(base: u32) -> Self {
         RccConf {
@@ -65,25 +72,25 @@ impl RccConf {
     }
 
     pub fn enable_gpio_ports(&self, ports: &[GpioPort]) {
-        let mut current_value: u32 = self.reg.read(12);
+        let mut current_value: u32 = self.reg.read(RCC_AHB1ENR);
         current_value |= ports.iter().fold(0, |acc, e| acc | (*e as u32));
-        self.reg.write(current_value, 12);
+        self.reg.write(current_value, RCC_AHB1ENR);
     }
 
     pub fn enable_system_configuration_controller(&self) {
-        self.reg.set_bit(14, 17);
+        self.reg.set_bit(14, RCC_APB2ENR);
     }
 
     pub fn enable_basic_timer(&self, timer: BasicTimer) {
-        let mut current_value: u32 = self.reg.read(16);
+        let mut current_value: u32 = self.reg.read(RCC_APB1ENR);
         current_value |= timer as u32;
-        self.reg.write(current_value, 16);
+        self.reg.write(current_value, RCC_APB1ENR);
     }
 
     pub fn enable_usart(&self, usart_number: u32) {
         match usart_number {
             3 => {
-                self.reg.set_bit(18, 16);
+                self.reg.set_bit(18, RCC_APB1ENR);
             }
             _ => {}
         }
@@ -116,7 +123,12 @@ impl RccConf {
     }
 
     // High Speed External Clock Signal
-    pub fn enable_hse(&self) {
+    pub fn enable_hse(&self, oscillator_bypassed: bool) {
+        if oscillator_bypassed {
+            self.reg.set_bit(18, 0);
+        } else {
+            self.reg.clear_bit(18, 0);
+        }
         self.reg.set_bit(16, 0);
         while !self.is_hse_ready() {
             unsafe {
@@ -151,19 +163,20 @@ impl RccConf {
     pub fn configure_main_pll(
         &self,
         clock_source: PllClockSource,
+        hse_oscillator_bypass: bool,
         multiplication_factor: u16,
         division_factor: u8,
         division_main_system_clock: u8,
         division_48mhz_click: u8,
     ) {
-        let mut current_value = self.reg.read(1);
+        let mut current_value = self.reg.read(RCC_PLLCFGR);
         current_value &= !(0b1 << 22); // PLL Clock Source
         match clock_source {
             PllClockSource::HSI => {
                 self.enable_hsi();
             }
             PllClockSource::HSE => {
-                self.enable_hse();
+                self.enable_hse(hse_oscillator_bypass);
                 current_value |= 0b1 << 22;
             }
         }
@@ -181,7 +194,7 @@ impl RccConf {
         }
         current_value &= !(0b1111 << 24); // [27:24] PLLQ
         current_value |= (division_48mhz_click as u32) << 24;
-        self.reg.write(current_value, 1);
+        self.reg.write(current_value, RCC_PLLCFGR);
         unsafe {
             store_barrier();
         }
@@ -192,15 +205,15 @@ impl RccConf {
     }
 
     pub fn get_system_clock_status(&self) -> SystemClock {
-        let value = (self.reg.read(2) & (0b11 << 2)) >> 2;
+        let value = (self.reg.read(RCC_CFGR) & (0b11 << 2)) >> 2;
         SystemClock::try_from(value).unwrap()
     }
 
     pub fn set_system_clock(&self, system_clock: SystemClock) {
-        let mut current_value = self.reg.read(2);
+        let mut current_value = self.reg.read(RCC_CFGR);
         current_value &= 0b11; // [1:0] SW
         current_value |= u32::from(system_clock.clone());
-        self.reg.write(current_value, 2);
+        self.reg.write(current_value, RCC_CFGR);
         unsafe {
             store_barrier();
             while self.get_system_clock_status() != system_clock {
@@ -221,12 +234,12 @@ impl RccConf {
 
     // Advanced Peripheral Bus
     pub fn set_apb_prescaler(&self, high_speed: u8, low_speed: u8) {
-        let mut current_value = self.reg.read(2);
+        let mut current_value = self.reg.read(RCC_CFGR);
         current_value &= !(0b111 << 13); // [15:13] PPRE2
         current_value &= !(0b111 << 10); // [12:10] PPRE1
         current_value |= Self::calculate_apb_prescaler(high_speed) << 13;
         current_value |= Self::calculate_apb_prescaler(low_speed) << 10;
-        self.reg.write(current_value, 2);
+        self.reg.write(current_value, RCC_CFGR);
     }
 
     fn calculate_ahb_prescaler(prescaler: u16) -> u32 {
@@ -245,10 +258,10 @@ impl RccConf {
 
     // Advanced High-performance Bus
     pub fn set_ahb_prescaler(&self, divider: u16) {
-        let mut current_value = self.reg.read(2);
+        let mut current_value = self.reg.read(RCC_CFGR);
         current_value &= !(0b1111 << 4); // [7:4] HPRE
         current_value |= Self::calculate_ahb_prescaler(divider) << 4;
-        self.reg.write(current_value, 2);
+        self.reg.write(current_value, RCC_CFGR);
     }
 
     pub fn enable_dma(&self, dma_id: u32) {
