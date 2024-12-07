@@ -1,8 +1,8 @@
 use crate::asm::no_operation;
 use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
-use crate::{clear_mask, n_bits};
 use crate::rcc::SystemClock::{HSE, HSI, PLL};
+use crate::{clear_mask, n_bits};
 
 pub struct RccConf {
     reg: MemoryMappedIo,
@@ -234,6 +234,14 @@ impl RccConf {
         }
     }
 
+    fn is_apb_prescaler_set(&self, high_speed: u8, low_speed: u8) -> bool {
+        let current = self.reg.read(RCC_CFGR);
+        let high = (current & (n_bits!(3) << 13)) >> 13;
+        let low = (current & (n_bits!(3) << 10)) >> 10;
+        high == Self::calculate_apb_prescaler(high_speed)
+            && low == Self::calculate_apb_prescaler(low_speed)
+    }
+
     // Advanced Peripheral Bus
     pub fn set_apb_prescaler(&self, high_speed: u8, low_speed: u8) {
         let mut current_value = self.reg.read(RCC_CFGR);
@@ -242,6 +250,12 @@ impl RccConf {
         current_value |= Self::calculate_apb_prescaler(high_speed) << 13;
         current_value |= Self::calculate_apb_prescaler(low_speed) << 10;
         self.reg.write(current_value, RCC_CFGR);
+        unsafe {
+            store_barrier();
+            while !self.is_apb_prescaler_set(high_speed, low_speed) {
+                no_operation();
+            }
+        }
     }
 
     fn calculate_ahb_prescaler(prescaler: u16) -> u32 {
@@ -258,18 +272,29 @@ impl RccConf {
         }
     }
 
+    fn is_ahb_prescaler_set(&self, prescaler: u16) -> bool {
+        let current = (self.reg.read(RCC_CFGR) & (n_bits!(4) << 4)) >> 4;
+        Self::calculate_ahb_prescaler(prescaler) == current
+    }
+
     // Advanced High-performance Bus
     pub fn set_ahb_prescaler(&self, divider: u16) {
         let mut current_value = self.reg.read(RCC_CFGR);
         current_value &= clear_mask!(4, 4); // [7:4] HPRE
         current_value |= Self::calculate_ahb_prescaler(divider) << 4;
         self.reg.write(current_value, RCC_CFGR);
+        unsafe {
+            store_barrier();
+            while !self.is_ahb_prescaler_set(divider) {
+                no_operation();
+            }
+        }
     }
 
     pub fn enable_dma(&self, dma_id: u32) {
         match dma_id {
-            1 => self.reg.set_bit(21, 12),
-            2 => self.reg.set_bit(22, 12),
+            1 => self.reg.set_bit(21, RCC_AHB1ENR),
+            2 => self.reg.set_bit(22, RCC_AHB1ENR),
             _ => {}
         }
     }

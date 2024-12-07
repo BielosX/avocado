@@ -13,6 +13,10 @@ impl FlashConf {
         }
     }
 
+    /*
+       RM0090 p100
+       LATENCY[3:0] for STM32F42xxx and STM32F43xxx
+    */
     pub fn set_latency(&self, latency: u8) {
         let mut current_value = self.reg.read(0);
         current_value &= !0b1111;
