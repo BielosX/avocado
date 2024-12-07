@@ -11,6 +11,7 @@ mod independent_watchdog;
 mod memory;
 mod memory_mapped_io;
 mod nvic;
+mod pwr;
 mod rcc;
 mod stm32f439zitx;
 mod syscfg;
@@ -24,10 +25,7 @@ use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
 use crate::rcc::PllClockSource::HSE;
 use crate::rcc::SystemClock::PLL;
-use crate::stm32f439zitx::{
-    Interrupt, EXTI, FLASH, IWDG, NVIC, PORT_B, PORT_C, PORT_D, RCC, SYSCFG, TIM6, TIM7, USART3,
-    USART3_DMA1_DRIVER, USART3_SINGLE_BYTE_DRIVER,
-};
+use crate::stm32f439zitx::{Interrupt, EXTI, FLASH, IWDG, NVIC, PORT_B, PORT_C, PORT_D, PWR, RCC, SYSCFG, TIM6, TIM7, USART3, USART3_DMA1_DRIVER, USART3_SINGLE_BYTE_DRIVER};
 use crate::syscfg::ExternalInterruptSourcePort;
 use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
@@ -41,6 +39,8 @@ use core::panic::PanicInfo;
    TIMxCLK = 2xPCLKx
 */
 fn setup_clock() {
+    RCC.enable_power_interface();
+    PWR.set_regulator_voltage_scaling_output(1);
     RCC.enable_internal_low_speed_oscillator();
     RCC.configure_main_pll(HSE, true, 168, 4, 2, 7);
     RCC.set_apb_prescaler(2, 4);

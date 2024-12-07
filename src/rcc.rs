@@ -298,4 +298,11 @@ impl RccConf {
             _ => {}
         }
     }
+
+    pub fn enable_power_interface(&self) {
+        self.reg.set_bit(28, RCC_APB1ENR);
+        unsafe {
+            store_barrier();
+        }
+    }
 }

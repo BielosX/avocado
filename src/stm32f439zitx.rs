@@ -4,6 +4,7 @@ use crate::flash::FlashConf;
 use crate::gpio::GpioConf;
 use crate::independent_watchdog::IndependentWatchdogConf;
 use crate::nvic::NvicConf;
+use crate::pwr::PwrConf;
 use crate::rcc::RccConf;
 use crate::syscfg::SysConf;
 use crate::timer::BasicTimerConf;
@@ -24,6 +25,7 @@ pub static IWDG: IndependentWatchdogConf = IndependentWatchdogConf::new(0x400030
 pub static DMA1: DmaConf = DmaConf::new(0x40026000);
 pub static mut USART3_DMA1_DRIVER: UsartDmaDriver<1024> = UsartDmaDriver::new(&USART3, &DMA1, 3, 4);
 pub static FLASH: FlashConf = FlashConf::new(0x40023C00);
+pub static PWR: PwrConf = PwrConf::new(0x40007000);
 
 #[repr(u32)]
 pub enum Interrupt {
