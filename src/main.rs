@@ -16,6 +16,7 @@ mod stm32f439zitx;
 mod syscfg;
 mod timer;
 mod usart;
+mod util;
 
 use crate::gpio::AlternateFunction;
 use crate::gpio::PinMode::{Alternate, Input, Output};
@@ -37,6 +38,7 @@ use core::panic::PanicInfo;
    SYSCLK = 168MHz
    PCLK1 = 42MHz
    PCLK2 = 84MHz
+   TIMxCLK = 2xPCLKx
 */
 fn setup_clock() {
     RCC.enable_internal_low_speed_oscillator();

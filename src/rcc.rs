@@ -1,8 +1,8 @@
 use crate::asm::no_operation;
 use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
+use crate::{clear_mask, n_bits};
 use crate::rcc::SystemClock::{HSE, HSI, PLL};
-use crate::stm32f439zitx::RCC;
 
 pub struct RccConf {
     reg: MemoryMappedIo,
@@ -58,11 +58,13 @@ impl TryFrom<u32> for SystemClock {
     }
 }
 
+const RCC_CR: usize = 0;
 const RCC_PLLCFGR: usize = 0x04 >> 2;
 const RCC_CFGR: usize = 0x08 >> 2;
 const RCC_AHB1ENR: usize = 0x30 >> 2;
 const RCC_APB1ENR: usize = 0x40 >> 2;
 const RCC_APB2ENR: usize = 0x44 >> 2;
+const RCC_CSR: usize = 0x74 >> 2;
 
 impl RccConf {
     pub const fn new(base: u32) -> Self {
@@ -97,7 +99,7 @@ impl RccConf {
     }
 
     pub fn enable_internal_low_speed_oscillator(&self) {
-        self.reg.set_bit(0, 29);
+        self.reg.set_bit(0, RCC_CSR);
         while !self.is_internal_low_speed_oscillator_ready() {
             unsafe {
                 no_operation();
@@ -106,11 +108,11 @@ impl RccConf {
     }
 
     pub fn is_main_pll_ready(&self) -> bool {
-        self.reg.is_bit_set(25, 0)
+        self.reg.is_bit_set(25, RCC_CR)
     }
 
     pub fn enable_main_pll(&self) {
-        self.reg.set_bit(24, 0);
+        self.reg.set_bit(24, RCC_CR);
         while self.is_main_pll_ready() {
             unsafe {
                 no_operation();
@@ -119,17 +121,17 @@ impl RccConf {
     }
 
     pub fn is_hse_ready(&self) -> bool {
-        self.reg.is_bit_set(17, 0)
+        self.reg.is_bit_set(17, RCC_CR)
     }
 
     // High Speed External Clock Signal
     pub fn enable_hse(&self, oscillator_bypassed: bool) {
         if oscillator_bypassed {
-            self.reg.set_bit(18, 0);
+            self.reg.set_bit(18, RCC_CR);
         } else {
-            self.reg.clear_bit(18, 0);
+            self.reg.clear_bit(18, RCC_CR);
         }
-        self.reg.set_bit(16, 0);
+        self.reg.set_bit(16, RCC_CR);
         while !self.is_hse_ready() {
             unsafe {
                 no_operation();
@@ -138,12 +140,12 @@ impl RccConf {
     }
 
     pub fn is_hsi_ready(&self) -> bool {
-        self.reg.is_bit_set(1, 0)
+        self.reg.is_bit_set(1, RCC_CR)
     }
 
     // High Speed Internal Clock Signal
     pub fn enable_hsi(&self) {
-        self.reg.set_bit(0, 0);
+        self.reg.set_bit(0, RCC_CR);
         while !self.is_hsi_ready() {
             unsafe {
                 no_operation();
@@ -180,9 +182,9 @@ impl RccConf {
                 current_value |= 0b1 << 22;
             }
         }
-        current_value &= !(0b111111111 << 6); // [14:6] PLLN
+        current_value &= !(n_bits!(9) << 6); // [14:6] PLLN
         current_value |= (multiplication_factor as u32) << 6;
-        current_value &= !0b111111; // [5:0] PLLM
+        current_value &= !n_bits!(6); // [5:0] PLLM
         current_value |= division_factor as u32;
         current_value &= !(0b11 << 16); // [17:16] PLLP
         match division_main_system_clock {
@@ -192,7 +194,7 @@ impl RccConf {
             8 => current_value |= 0b11 << 16,
             _ => {}
         }
-        current_value &= !(0b1111 << 24); // [27:24] PLLQ
+        current_value &= !(n_bits!(4) << 24); // [27:24] PLLQ
         current_value |= (division_48mhz_click as u32) << 24;
         self.reg.write(current_value, RCC_PLLCFGR);
         unsafe {
@@ -201,7 +203,7 @@ impl RccConf {
     }
 
     pub fn is_internal_low_speed_oscillator_ready(&self) -> bool {
-        self.reg.is_bit_set(1, 29)
+        self.reg.is_bit_set(1, RCC_CSR)
     }
 
     pub fn get_system_clock_status(&self) -> SystemClock {
@@ -235,8 +237,8 @@ impl RccConf {
     // Advanced Peripheral Bus
     pub fn set_apb_prescaler(&self, high_speed: u8, low_speed: u8) {
         let mut current_value = self.reg.read(RCC_CFGR);
-        current_value &= !(0b111 << 13); // [15:13] PPRE2
-        current_value &= !(0b111 << 10); // [12:10] PPRE1
+        current_value &= clear_mask!(3, 13); // [15:13] PPRE2
+        current_value &= clear_mask!(3, 10); // [12:10] PPRE1
         current_value |= Self::calculate_apb_prescaler(high_speed) << 13;
         current_value |= Self::calculate_apb_prescaler(low_speed) << 10;
         self.reg.write(current_value, RCC_CFGR);
@@ -259,7 +261,7 @@ impl RccConf {
     // Advanced High-performance Bus
     pub fn set_ahb_prescaler(&self, divider: u16) {
         let mut current_value = self.reg.read(RCC_CFGR);
-        current_value &= !(0b1111 << 4); // [7:4] HPRE
+        current_value &= clear_mask!(4, 4); // [7:4] HPRE
         current_value |= Self::calculate_ahb_prescaler(divider) << 4;
         self.reg.write(current_value, RCC_CFGR);
     }
