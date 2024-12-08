@@ -153,6 +153,10 @@ impl RccConf {
         }
     }
 
+    pub fn disable_hsi(&self) {
+        self.reg.clear_bit(0, RCC_CR);
+    }
+
     /*
        f_VCO = f_PLL_input * (multiplication_factor / division_factor)
        f_PLL_general_output = f_VCO / division_main_system_clock

@@ -25,7 +25,10 @@ use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
 use crate::rcc::PllClockSource::HSE;
 use crate::rcc::SystemClock::PLL;
-use crate::stm32f439zitx::{Interrupt, EXTI, FLASH, IWDG, NVIC, PORT_B, PORT_C, PORT_D, PWR, RCC, SYSCFG, TIM6, TIM7, USART3, USART3_DMA1_DRIVER, USART3_SINGLE_BYTE_DRIVER};
+use crate::stm32f439zitx::{
+    Interrupt, EXTI, FLASH, IWDG, NVIC, PORT_B, PORT_C, PORT_D, PWR, RCC, SYSCFG, TIM6, TIM7,
+    USART3, USART3_DMA1_DRIVER, USART3_SINGLE_BYTE_DRIVER,
+};
 use crate::syscfg::ExternalInterruptSourcePort;
 use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
@@ -48,6 +51,7 @@ fn setup_clock() {
     RCC.enable_main_pll();
     FLASH.set_latency(5);
     RCC.set_system_clock(PLL);
+    RCC.disable_hsi();
 }
 
 unsafe fn reset() -> ! {
