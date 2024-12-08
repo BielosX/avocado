@@ -8,6 +8,6 @@ macro_rules! n_bits {
 #[macro_export]
 macro_rules! clear_mask {
     ($bits:literal, $shift:literal) => {
-        !(n_bits!($bits) << $shift)
+        !(crate::n_bits!($bits) << $shift)
     };
 }
