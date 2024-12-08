@@ -1,4 +1,3 @@
-use crate::asm::no_operation;
 use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
 use crate::{clear_mask, n_bits};
@@ -8,6 +7,7 @@ pub struct PwrConf {
 }
 
 const PWR_CR: usize = 0;
+const PWR_CSR: usize = 0x04 >> 2;
 
 impl PwrConf {
     pub const fn new(base: u32) -> PwrConf {
@@ -16,14 +16,9 @@ impl PwrConf {
         }
     }
 
-    fn get_regulator_voltage_scaling_output(&self) -> u8 {
-        let value = (self.reg.read(PWR_CR) & (0b11 << 14)) >> 14;
-        match value {
-            0b11 => 1,
-            0b10 => 2,
-            0b01 => 3,
-            _ => 3,
-        }
+    // Check when PLL is ON
+    pub fn is_regulator_voltage_scaling_output_ready(&self) -> bool {
+        self.reg.is_bit_set(14, PWR_CSR)
     }
 
     // DS9484 p95
@@ -40,9 +35,6 @@ impl PwrConf {
         self.reg.write(current_value, PWR_CR);
         unsafe {
             store_barrier();
-            while self.get_regulator_voltage_scaling_output() != scale {
-                no_operation();
-            }
         }
     }
 }

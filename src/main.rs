@@ -34,7 +34,7 @@ use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
 use crate::usart::UsartWordLength::Len1Start8Data;
 use core::panic::PanicInfo;
-
+use crate::asm::no_operation;
 /*
    SYSCLK = 168MHz
    PCLK1 = 42MHz
@@ -52,6 +52,11 @@ fn setup_clock() {
     FLASH.set_latency(5);
     RCC.set_system_clock(PLL);
     RCC.disable_hsi();
+    while !PWR.is_regulator_voltage_scaling_output_ready() {
+        unsafe {
+            no_operation();
+        }
+    }
 }
 
 unsafe fn reset() -> ! {
