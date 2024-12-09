@@ -45,11 +45,11 @@ fn setup_clock() {
     RCC.enable_power_interface();
     PWR.set_regulator_voltage_scaling_output(1);
     RCC.enable_internal_low_speed_oscillator();
-    RCC.configure_main_pll(HSE, true, 168, 4, 2, 7);
-    RCC.set_apb_prescaler(2, 4);
+    RCC.configure_main_pll(HSE, true, 168, 4, 8, 7);
+    RCC.set_apb_prescaler(1, 1);
     RCC.set_ahb_prescaler(1);
     RCC.enable_main_pll();
-    FLASH.configure_access_control(5, true, true, true);
+    FLASH.configure_access_control(1, true, true, true);
     RCC.set_system_clock(PLL);
     RCC.disable_hsi();
     while !PWR.is_regulator_voltage_scaling_output_ready() {
