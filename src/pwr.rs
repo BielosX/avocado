@@ -1,6 +1,6 @@
+use crate::clear_mask;
 use crate::memory::store_barrier;
 use crate::memory_mapped_io::MemoryMappedIo;
-use crate::clear_mask;
 
 pub struct PwrConf {
     reg: MemoryMappedIo,

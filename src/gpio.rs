@@ -1,3 +1,4 @@
+use crate::clear_mask;
 use crate::memory_mapped_io::MemoryMappedIo;
 
 pub struct GpioConf {
@@ -16,6 +17,15 @@ pub enum PinMode {
 #[derive(Clone, Copy)]
 pub enum AlternateFunction {
     Usart1_3 = 0b0111,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy)]
+pub enum OutputSpeed {
+    Low = 0b00,
+    Medium = 0b01,
+    High = 0b10,
+    VeryHigh = 0b11,
 }
 
 impl GpioConf {
@@ -64,5 +74,12 @@ impl GpioConf {
         current_value &= !(0b1111 << shift);
         current_value |= (function as u32) << shift;
         self.reg.write(current_value, 8 + offset);
+    }
+
+    pub fn set_output_speed(&self, pin: u32, speed: OutputSpeed) {
+        let mut current_value = self.reg.read(2);
+        current_value &= 0b11 << (pin << 1);
+        current_value |= (speed as u32) << (pin << 1);
+        self.reg.write(current_value, 2);
     }
 }

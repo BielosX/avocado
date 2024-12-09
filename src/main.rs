@@ -35,6 +35,7 @@ use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
 use crate::usart::UsartWordLength::Len1Start8Data;
 use core::panic::PanicInfo;
+use crate::gpio::OutputSpeed::{High, Low, Medium, VeryHigh};
 /*
    SYSCLK = 168MHz
    PCLK1 = 42MHz
@@ -45,11 +46,11 @@ fn setup_clock() {
     RCC.enable_power_interface();
     PWR.set_regulator_voltage_scaling_output(1);
     RCC.enable_internal_low_speed_oscillator();
-    RCC.configure_main_pll(HSE, true, 168, 4, 8, 7);
-    RCC.set_apb_prescaler(1, 1);
-    RCC.set_ahb_prescaler(1);
+    RCC.configure_main_pll(HSE, true, 168, 4, 2, 7);
+    RCC.set_apb_prescaler(2, 4);
+    RCC.set_ahb_prescaler(2);
     RCC.enable_main_pll();
-    FLASH.configure_access_control(1, true, true, true);
+    FLASH.configure_access_control(5, true, true, true);
     RCC.set_system_clock(PLL);
     RCC.disable_hsi();
     while !PWR.is_regulator_voltage_scaling_output_ready() {
@@ -81,6 +82,8 @@ unsafe fn reset() -> ! {
     PORT_D.set_pins_mode(Alternate, &[8, 9]);
     PORT_D.set_alternate_function(8, AlternateFunction::Usart1_3);
     PORT_D.set_alternate_function(9, AlternateFunction::Usart1_3);
+    PORT_D.set_output_speed(8, VeryHigh);
+    PORT_D.set_output_speed(9, VeryHigh);
 
     /*
        9.6KBps
