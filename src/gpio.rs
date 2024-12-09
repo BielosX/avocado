@@ -78,7 +78,7 @@ impl GpioConf {
 
     pub fn set_output_speed(&self, pin: u32, speed: OutputSpeed) {
         let mut current_value = self.reg.read(2);
-        current_value &= 0b11 << (pin << 1);
+        current_value &= !(0b11 << (pin << 1));
         current_value |= (speed as u32) << (pin << 1);
         self.reg.write(current_value, 2);
     }
