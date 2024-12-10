@@ -292,7 +292,7 @@ impl RccConf {
             && low == Self::calculate_apb_prescaler(low_speed)
     }
 
-    fn set_highest_apb_dividers(&self) {
+    pub fn set_highest_apb_dividers(&self) {
         let mut current_value = self.reg.read(RCC_CFGR);
         current_value &= clear_mask!(3, 13); // [15:13] PPRE2
         current_value &= clear_mask!(3, 10); // [12:10] PPRE1
@@ -302,7 +302,6 @@ impl RccConf {
 
     // Advanced Peripheral Bus
     pub fn set_apb_prescaler(&self, high_speed: u8, low_speed: u8) {
-        self.set_highest_apb_dividers();
         let mut current_value = self.reg.read(RCC_CFGR);
         current_value &= clear_mask!(3, 13); // [15:13] PPRE2
         current_value &= clear_mask!(3, 10); // [12:10] PPRE1
