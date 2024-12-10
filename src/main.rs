@@ -41,6 +41,9 @@ use core::panic::PanicInfo;
    PCLK1 = 42MHz
    PCLK2 = 84MHz
    TIMxCLK = 2xPCLKx
+
+   Increasing the CPU frequency RM0090 p82
+   HPRE is set after SW
 */
 fn setup_clock() {
     RCC.enable_power_interface();
