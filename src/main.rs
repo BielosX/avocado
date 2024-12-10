@@ -86,11 +86,11 @@ unsafe fn reset() -> ! {
     PORT_D.set_output_speed(9, VeryHigh);
 
     /*
-       9.6KBps
+       115.2KBs
        USART3 APB1 PCLK1 42MHz
-       273.4375 = 273 + 7/16
+       22.8125 = 22 + 13/16
     */
-    USART3.set_baud_rate(273, 7);
+    USART3.set_baud_rate(22, 13);
     USART3.set_usart_control(UsartControl {
         enabled: Some(true),
         parity_control_enabled: Some(false),
@@ -122,7 +122,7 @@ unsafe fn reset() -> ! {
     // TIM6 handler index 54
     TIM6.update_interrupt_enable();
     TIM6.set_prescaler(0);
-    TIM6.set_auto_reload(0x00FF);
+    TIM6.set_auto_reload(0xFFFF);
     TIM6.enable_timer();
 
     IWDG.start_watchdog();

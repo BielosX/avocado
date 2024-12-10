@@ -23,4 +23,4 @@ clean:
     cargo clean
 
 usart-watch:
-    sudo minicom -b 9600 -o -D /dev/ttyACM0
+    sudo minicom -b 115200 -o -D /dev/ttyACM0

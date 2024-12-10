@@ -67,20 +67,20 @@ const RCC_APB2ENR: usize = 0x44 >> 2;
 const RCC_CSR: usize = 0x74 >> 2;
 
 /*
-    ES0206 Errata
-    A delay may be observed between an RCC peripheral clock enable and the effective peripheral enabling.
-    It must be taken into account in order to manage the peripheral read/write from/to registers.
+   ES0206 Errata
+   A delay may be observed between an RCC peripheral clock enable and the effective peripheral enabling.
+   It must be taken into account in order to manage the peripheral read/write from/to registers.
 
 
-    Workaround
+   Workaround
 
-    Apply one of the following measures:
-    * Use the DSB instruction to stall the Arm Cortex-M4 CPU pipeline until the instruction has completed.
-    * Insert “n” NOPs between the RCC enable bit write and the peripheral register writes (n = 2 for AHB
-        peripherals, n = 1 + AHB/APB prescaler for APB peripherals).
-    * Simply insert a dummy read operation from the corresponding register just after enabling
-        the peripheral clock.
- */
+   Apply one of the following measures:
+   * Use the DSB instruction to stall the Arm Cortex-M4 CPU pipeline until the instruction has completed.
+   * Insert “n” NOPs between the RCC enable bit write and the peripheral register writes (n = 2 for AHB
+       peripherals, n = 1 + AHB/APB prescaler for APB peripherals).
+   * Simply insert a dummy read operation from the corresponding register just after enabling
+       the peripheral clock.
+*/
 impl RccConf {
     pub const fn new(base: u32) -> Self {
         RccConf {
@@ -100,6 +100,10 @@ impl RccConf {
 
     pub fn enable_system_configuration_controller(&self) {
         self.reg.set_bit(14, RCC_APB2ENR);
+        unsafe {
+            store_barrier();
+        }
+        let _value = self.reg.read(RCC_APB2ENR);
     }
 
     pub fn enable_basic_timer(&self, timer: BasicTimer) {
