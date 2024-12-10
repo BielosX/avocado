@@ -191,13 +191,14 @@ impl RccConf {
         current_value &= !n_bits!(6); // [5:0] PLLM
         current_value |= division_factor as u32;
         current_value &= !(0b11 << 16); // [17:16] PLLP
-        match division_main_system_clock {
-            2 => current_value |= 0b00 << 16,
-            4 => current_value |= 0b01 << 16,
-            6 => current_value |= 0b10 << 16,
-            8 => current_value |= 0b11 << 16,
-            _ => {}
-        }
+        let main_system_clk_divider = match division_main_system_clock {
+            2 => 0b00,
+            4 => 0b01,
+            6 => 0b10,
+            8 => 0b11,
+            _ => 0b00,
+        };
+        current_value |= main_system_clk_divider  << 16;
         current_value &= !(n_bits!(4) << 24); // [27:24] PLLQ
         current_value |= (division_48mhz_click as u32) << 24;
         self.reg.write(current_value, RCC_PLLCFGR);
