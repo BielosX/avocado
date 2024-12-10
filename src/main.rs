@@ -21,6 +21,7 @@ mod util;
 
 use crate::asm::no_operation;
 use crate::gpio::AlternateFunction;
+use crate::gpio::OutputSpeed::{High, Low, Medium, VeryHigh};
 use crate::gpio::PinMode::{Alternate, Input, Output};
 use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
@@ -35,7 +36,6 @@ use crate::usart::UsartControl;
 use crate::usart::UsartStopBits::Stop1Bit;
 use crate::usart::UsartWordLength::Len1Start8Data;
 use core::panic::PanicInfo;
-use crate::gpio::OutputSpeed::{High, Low, Medium, VeryHigh};
 /*
    SYSCLK = 168MHz
    PCLK1 = 42MHz
@@ -48,7 +48,7 @@ fn setup_clock() {
     RCC.enable_internal_low_speed_oscillator();
     RCC.configure_main_pll(HSE, true, 168, 4, 2, 7);
     RCC.set_apb_prescaler(2, 4);
-    RCC.set_ahb_prescaler(2);
+    RCC.set_ahb_prescaler(1);
     RCC.enable_main_pll();
     FLASH.configure_access_control(5, true, true, true);
     RCC.set_system_clock(PLL);

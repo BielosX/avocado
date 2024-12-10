@@ -36,5 +36,6 @@ impl PwrConf {
         unsafe {
             store_barrier();
         }
+        let _value = self.reg.read(PWR_CR);
     }
 }

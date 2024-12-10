@@ -66,6 +66,21 @@ const RCC_APB1ENR: usize = 0x40 >> 2;
 const RCC_APB2ENR: usize = 0x44 >> 2;
 const RCC_CSR: usize = 0x74 >> 2;
 
+/*
+    ES0206 Errata
+    A delay may be observed between an RCC peripheral clock enable and the effective peripheral enabling.
+    It must be taken into account in order to manage the peripheral read/write from/to registers.
+
+
+    Workaround
+
+    Apply one of the following measures:
+    * Use the DSB instruction to stall the Arm Cortex-M4 CPU pipeline until the instruction has completed.
+    * Insert “n” NOPs between the RCC enable bit write and the peripheral register writes (n = 2 for AHB
+        peripherals, n = 1 + AHB/APB prescaler for APB peripherals).
+    * Simply insert a dummy read operation from the corresponding register just after enabling
+        the peripheral clock.
+ */
 impl RccConf {
     pub const fn new(base: u32) -> Self {
         RccConf {
@@ -77,6 +92,10 @@ impl RccConf {
         let mut current_value: u32 = self.reg.read(RCC_AHB1ENR);
         current_value |= ports.iter().fold(0, |acc, e| acc | (*e as u32));
         self.reg.write(current_value, RCC_AHB1ENR);
+        unsafe {
+            store_barrier();
+        }
+        let _value = self.reg.read(RCC_AHB1ENR);
     }
 
     pub fn enable_system_configuration_controller(&self) {
@@ -87,6 +106,10 @@ impl RccConf {
         let mut current_value: u32 = self.reg.read(RCC_APB1ENR);
         current_value |= timer as u32;
         self.reg.write(current_value, RCC_APB1ENR);
+        unsafe {
+            store_barrier();
+        }
+        let _value = self.reg.read(RCC_APB1ENR);
     }
 
     pub fn enable_usart(&self, usart_number: u32) {
@@ -96,15 +119,21 @@ impl RccConf {
             }
             _ => {}
         }
+        unsafe {
+            store_barrier();
+        }
+        let _value = self.reg.read(RCC_APB1ENR);
     }
 
     pub fn enable_internal_low_speed_oscillator(&self) {
         self.reg.set_bit(0, RCC_CSR);
-        while !self.is_internal_low_speed_oscillator_ready() {
-            unsafe {
+        unsafe {
+            store_barrier();
+            while !self.is_internal_low_speed_oscillator_ready() {
                 no_operation();
             }
         }
+        let _value = self.reg.read(RCC_CSR);
     }
 
     pub fn is_main_pll_ready(&self) -> bool {
@@ -113,11 +142,13 @@ impl RccConf {
 
     pub fn enable_main_pll(&self) {
         self.reg.set_bit(24, RCC_CR);
-        while self.is_main_pll_ready() {
-            unsafe {
+        unsafe {
+            store_barrier();
+            while self.is_main_pll_ready() {
                 no_operation();
             }
         }
+        let _value = self.reg.read(RCC_CR);
     }
 
     pub fn is_hse_ready(&self) -> bool {
@@ -132,11 +163,13 @@ impl RccConf {
             self.reg.clear_bit(18, RCC_CR);
         }
         self.reg.set_bit(16, RCC_CR);
-        while !self.is_hse_ready() {
-            unsafe {
+        unsafe {
+            store_barrier();
+            while !self.is_hse_ready() {
                 no_operation();
             }
         }
+        let _value = self.reg.read(RCC_CR);
     }
 
     pub fn is_hsi_ready(&self) -> bool {
@@ -146,15 +179,21 @@ impl RccConf {
     // High Speed Internal Clock Signal
     pub fn enable_hsi(&self) {
         self.reg.set_bit(0, RCC_CR);
-        while !self.is_hsi_ready() {
-            unsafe {
+        unsafe {
+            store_barrier();
+            while !self.is_hsi_ready() {
                 no_operation();
             }
         }
+        let _value = self.reg.read(RCC_CR);
     }
 
     pub fn disable_hsi(&self) {
         self.reg.clear_bit(0, RCC_CR);
+        unsafe {
+            store_barrier();
+        }
+        let _value = self.reg.read(RCC_CR);
     }
 
     /*
@@ -198,13 +237,14 @@ impl RccConf {
             8 => 0b11,
             _ => 0b00,
         };
-        current_value |= main_system_clk_divider  << 16;
+        current_value |= main_system_clk_divider << 16;
         current_value &= !(n_bits!(4) << 24); // [27:24] PLLQ
         current_value |= (division_48mhz_click as u32) << 24;
         self.reg.write(current_value, RCC_PLLCFGR);
         unsafe {
             store_barrier();
         }
+        let _value = self.reg.read(RCC_PLLCFGR);
     }
 
     pub fn is_internal_low_speed_oscillator_ready(&self) -> bool {
@@ -227,6 +267,7 @@ impl RccConf {
                 no_operation();
             }
         }
+        let _value = self.reg.read(RCC_CFGR);
     }
 
     fn calculate_apb_prescaler(prescaler: u8) -> u32 {
@@ -247,8 +288,17 @@ impl RccConf {
             && low == Self::calculate_apb_prescaler(low_speed)
     }
 
+    fn set_highest_apb_dividers(&self) {
+        let mut current_value = self.reg.read(RCC_CFGR);
+        current_value &= clear_mask!(3, 13); // [15:13] PPRE2
+        current_value &= clear_mask!(3, 10); // [12:10] PPRE1
+        current_value |= (0b111 << 13) | (0b111 << 10);
+        self.reg.write(current_value, RCC_CFGR);
+    }
+
     // Advanced Peripheral Bus
     pub fn set_apb_prescaler(&self, high_speed: u8, low_speed: u8) {
+        self.set_highest_apb_dividers();
         let mut current_value = self.reg.read(RCC_CFGR);
         current_value &= clear_mask!(3, 13); // [15:13] PPRE2
         current_value &= clear_mask!(3, 10); // [12:10] PPRE1
@@ -261,6 +311,7 @@ impl RccConf {
                 no_operation();
             }
         }
+        let _value = self.reg.read(RCC_CFGR);
     }
 
     fn calculate_ahb_prescaler(prescaler: u16) -> u32 {
@@ -294,6 +345,7 @@ impl RccConf {
                 no_operation();
             }
         }
+        let _value = self.reg.read(RCC_CFGR);
     }
 
     pub fn enable_dma(&self, dma_id: u32) {
@@ -302,6 +354,10 @@ impl RccConf {
             2 => self.reg.set_bit(22, RCC_AHB1ENR),
             _ => {}
         }
+        unsafe {
+            store_barrier();
+        }
+        let _value = self.reg.read(RCC_AHB1ENR);
     }
 
     pub fn enable_power_interface(&self) {
@@ -309,5 +365,6 @@ impl RccConf {
         unsafe {
             store_barrier();
         }
+        let _value = self.reg.read(RCC_APB1ENR);
     }
 }
