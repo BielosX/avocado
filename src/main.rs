@@ -21,7 +21,7 @@ mod util;
 
 use crate::asm::no_operation;
 use crate::gpio::AlternateFunction;
-use crate::gpio::OutputSpeed::{High, Low, Medium, VeryHigh};
+use crate::gpio::OutputSpeed::VeryHigh;
 use crate::gpio::PinMode::{Alternate, Input, Output};
 use crate::rcc::BasicTimer;
 use crate::rcc::GpioPort::{B, C, D};
